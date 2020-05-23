@@ -1,4 +1,4 @@
-# Fake Response [![](https://travis-ci.org/typicode/json-server.svg?branch=master)](https://travis-ci.org/typicode/json-server) [![](https://badge.fury.io/js/json-server.svg)](http://badge.fury.io/js/json-server)
+# Fake Response [![](https://badge.fury.io/js/fake-response.svg)](http://badge.fury.io/js/fake-response)
 
 Get a full fake REST API with **zero coding** in **less than 30 seconds** (seriously)
 
@@ -312,7 +312,7 @@ These can be overridden in the `route.js` configs
 
 - _Website_ - https://r35007.github.io/Siva_Profile/
 - _Portfolio_ - https://r35007.github.io/Siva_Profile/portfolio
-- _GitHub_ - https://github.com/R35007
+- _GitHub_ - https://github.com/R35007/Fake-Response
 
 ## License
 
