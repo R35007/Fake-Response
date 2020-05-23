@@ -1,8 +1,8 @@
 import express from "express";
 import bodyParser from "body-parser";
 import axios from "axios";
-import { RouteConfig, Middleware, DataUrl } from "./route-config-model";
-import sample_route from "./route";
+import { Db, Middleware, DataUrl, Config } from "./model";
+import { db as sample_db } from "./db";
 
 const app: express.Application = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -14,11 +14,29 @@ const fs = require("fs"),
 const availableRoutes: string[] = [];
 const defaultRoutes: string[] = [];
 const db: object = {};
+const config: Config = {
+  port: 3000,
+  middleware: () => false,
+  excludeRoutes: [],
+};
 
-const startServer = (port: number) => {
-  app.listen(port, () =>
-    console.log(`Server listening at http://localhost:${port}`)
-  );
+export const getConfig = (): Config => config;
+
+export const getSampleDb = (): Db[] => sample_db;
+
+export const getDb = (): object => db;
+
+const setConfig = ({ port, middleware, excludeRoutes }: Config) => {
+  config.port = port || config.port;
+  config.middleware = middleware || config.middleware;
+  config.excludeRoutes = excludeRoutes || config.excludeRoutes;
+};
+
+const startServer = () => {
+  app.listen(config.port, () => {
+    console.log(`Server listening at http://localhost:${config.port}`);
+    console.log();
+  });
 };
 
 const isDuplicateRoute = (route: string, data: any) => {
@@ -40,20 +58,19 @@ const sendResponse = (
   middleware: Middleware = () => {}
 ) => {
   app.all(route, (req: express.Request, res: express.Response) => {
-    const overrideData = middleware(req, res, data);
-    dataType === "file"
-      ? res.sendFile(overrideData || data)
-      : res.send(overrideData || data);
+    let commonMiddleware: Middleware | boolean = false;
+    const specificMiddleware = middleware(req, res, data);
+    if (config.excludeRoutes.indexOf(route) < 0) {
+      commonMiddleware = config.middleware(req, res, data);
+    }
+
+    const response = specificMiddleware || commonMiddleware || data;
+    dataType === "file" ? res.sendFile(response) : res.send(response);
   });
 };
 
-async function asyncFunction(routeConfig: RouteConfig, resolve: Function) {
-  const {
-    data = "",
-    dataType = "default",
-    routes = [],
-    middlewares = [],
-  } = routeConfig;
+async function asyncFunction(db: Db, resolve: Function) {
+  const { data = "", dataType = "default", routes = [], middlewares = [] } = db;
 
   let resp: any = "";
 
@@ -72,7 +89,7 @@ async function asyncFunction(routeConfig: RouteConfig, resolve: Function) {
       resp = data;
     } else {
       throw Error(
-        "Invalid Data Type. The Data type must be one of there. `default` | `file` || `url `"
+        "Invalid Data Type. The Data type must be one of these. `default` | `file` || `url `"
       );
     }
 
@@ -88,26 +105,33 @@ async function asyncFunction(routeConfig: RouteConfig, resolve: Function) {
   }
 }
 
-const log = (port: number) => {
+const log = () => {
+  console.log();
+  console.log("Fake Response Server Started...");
+  console.log();
+  console.log("Resources : ");
   console.log();
   app._router.stack.map((r) => {
     if (r.route && r.route.path && defaultRoutes.indexOf(r.route.path) < 0) {
-      console.log("http://localhost:" + port + r.route.path);
+      console.log("http://localhost:" + config.port + r.route.path);
     }
   });
-
+  if (defaultRoutes.length > 0) {
+    console.log();
+    console.log("Default Routes : ");
+  }
   console.log();
   defaultRoutes.map((route) => {
     const name = route === "/" ? "HOME" : route.replace("/", "").toUpperCase();
     console.log(name);
-    console.log("http://localhost:" + port + route);
+    console.log("http://localhost:" + config.port + route);
     console.log();
   });
 
-  startServer(port);
+  startServer();
 };
 
-const createDefaultAPIS = (port: number) => {
+const createDefaultAPIS = () => {
   const HOME = "/",
     DB = "/db",
     ROUTESLIST = "/routesList";
@@ -130,23 +154,34 @@ const createDefaultAPIS = (port: number) => {
     });
   }
 
-  log(port);
+  log();
 };
 
-export const getResponse = (
-  routeConfig: RouteConfig[] = sample_route,
-  port: number = 3000
-) => {
+export const getResponse = (db?: Db[], config?: Config) => {
   try {
-    let requests = routeConfig.map(
-      (data: RouteConfig) =>
+    if (!db) {
+      console.log();
+      console.log("Db not found. using sample DB");
+      db = getSampleDb();
+    }
+
+    if (!config) {
+      console.log("Config not found. using default Config");
+      console.log();
+      getConfig();
+    } else {
+      setConfig(config);
+    }
+
+    let requests = db.map(
+      (data: Db) =>
         new Promise((resolve) => {
           asyncFunction(data, resolve);
         })
     );
 
     Promise.all(requests).then(() => {
-      createDefaultAPIS(port);
+      createDefaultAPIS();
     });
   } catch (err) {
     console.log(err);

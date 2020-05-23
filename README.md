@@ -8,14 +8,19 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 
 - [Getting started](#getting-started)
 - [Advantages](#advantages)
-- [Data Types](#data-types)
+- [Good to Know](#good-to-know)
+- [How To Use](#how-to-use)
+  - [Default Config](#default-config)
+  - [Sample DB](#sample-db)
   - [Default Data](#default-data)
   - [File Data](#file-data)
   - [URL Data](#url-data)
-  - [Middleware](#middleware)
+  - [Specific Middleware](#specific-middleware)
+  - [Common Middleware](#common-middleware)
   - [Route types](#route-types)
   - [Simple example](#simple-example)
 - [Default Routes](#default-routes)
+- [API](#api)
 - [Author](#author)
 - [License](#license)
 
@@ -27,22 +32,30 @@ Install Fake Response
 npm install  fake-response
 ```
 
-Create a `route.js` file
+Create a `db.js` file
 
 ```js
-import * as fake from "fake-response";
+import * as fakeResponse from "fake-response";
 
-const routeConfigs = [
+const db = [
   {
     data: "Hello World",
     routes: ["/hello"],
   },
 ];
 
-fake.getResponse(routeConfigs, 3000);
+const config = {
+  port: 3000,
+};
+
+fakeResponse.getResponse(db, config);
 ```
 
-Run the command `node route.js` on the node command line
+Run the following command on the node command line
+
+```sh
+node db.js
+```
 
 Now if you go to [http://localhost:3000/hello](http://localhost:3000/hello), you'll get
 
@@ -51,24 +64,35 @@ Hello World
 ```
 
 To watch the server for every changes you can use `nodemon`.
+To install nodemon run the following command in the node command line
 
 ```
   npm i nodemon
 ```
 
-Once node mode in installed you can run the following command to watch the server for changes.
+Once nodemon in installed you can run the following command to watch the server for changes.
 
 ```
-nodemon route.js
+nodemon db.js
 ```
 
-Also when doing requests, it's good to know that:
+## Advantages
+
+- Get a full fake REST API in ease
+- A single response can be point to multiple route paths.
+- Any file can be send as a response. (json, image, txt, etc..)
+- The mock data can be maintained in different json files and urls which helps to organize your mock data
+- The return response can be manipulated or overridden by a middleware method. This helps to return a response depending on the post data or request params.
+
+## Good to Know
+
+When doing requests, it's good to know that:
 
 - Always start a routes with a prefix `/`. example : `/data`, `/user` etc..
 - You could point multiple routes for a single data. example :
 
 ```js
-const routeConfigs = [
+const db = [
   {
     data: "Hello World",
     routes: ["/hello", "/helloWorld", "/hello/:id"],
@@ -82,7 +106,7 @@ const routeConfigs = [
 const middleware = (req, res, data) => {
   return { ...data, id: 1 }; // you could return any response you wish
 };
-const routeConfigs = [
+const db = [
   {
     data: "Hello World",
     routes: ["/hello", "/helloWorld"],
@@ -99,21 +123,47 @@ const routeConfigs = [
   - `file` - To send any file. Note : you must provide a absolute path of the file in the `data` property
   - `url` - fetch data from any url
 
-### Advantages
+## How To Use
 
-- Get a full fake REST API in ease
-- A single response can be point to multiple route paths.
-- Any file can be send as a response. (json, image, txt, etc..)
-- The mock data can be maintained in different json files and urls which helps to organize your mock data
-- The return response can be manipulated and override by a middleware method. This helps to return a response depending on the post data or request params.
+Based on the previous `db.js` file, here are all the kinds of data and config you can use. Lets start with default config
 
-## Data Types
+### Default Config
 
-Based on the previous `route.js` file, here are all the kinds of config you can use. The `daaType` defines what type of data you want to fetch. It has three different data types.
+You can provide your port, common middleware in the config object, if not the script run by the default config given below.
 
-- default
-- file
-- url
+```js
+const config: Config = {
+  port: 3000,
+  middleware: () => false,
+  excludeRoutes: [],
+};
+```
+
+you can provide your own config by passing the config object in the `getResponse` api. For Example :
+
+```js
+import * as fakeResponse from "fake-response";
+
+const db = [
+  {
+    data: "Hello World",
+    routes: ["/hello"],
+  },
+];
+
+const config: Config = {
+  port: 4000,
+  middleware: () => (req, res, data) => console.log(new Date()),
+  excludeRoutes: ["/excludedRoute"],
+};
+
+fakeResponse.getResponse(db, config);
+```
+
+### Sample Db
+
+If you don't pass any db to the `getResponse` api by default the script runs the sample db.
+You could find the sample db ["here"]("https://github.com/R35007/Fake-Response/blob/master/src/db.ts")
 
 ### Default Data
 
@@ -121,7 +171,7 @@ By default the data can be in form of JSON | text | number. The following exampl
 Here the property `dataType` is optional. By default the property `dataType` value is `default`
 
 ```js
-const routeConfigs = [
+const db = [
   {
     data: "Hello World",
     routes: ["/text"],
@@ -150,7 +200,7 @@ For Example:
 ```js
 const path = require("path");
 
-const routeConfigs = [
+const db = [
   {
     data: path.resolve(__dirname, "../assets/users.json"), // path.resolve helps to provide you the absolute path of the file.
     dataType: "file",
@@ -178,7 +228,7 @@ The data can be fetched from the url you provide. The data endpoint can be defin
   Here are some examples for you.
 
 ```js
-const routeConfigs = [
+const db = [
   {
     data: "https://jsonplaceholder.typicode.com/todos/1",
     dataType: "url",
@@ -195,7 +245,7 @@ const routeConfigs = [
 ];
 ```
 
-### Middleware
+### Specific Middleware
 
 You could any method as a middleware to perform certain script actions before sending you the response.
 This helps in may way that you could also override your response based on any conditions.
@@ -209,7 +259,7 @@ const logTime = (req, res, data) => {
 
 const override = () => ({ ...data, name: "ram" });
 
-const routeConfigs = [
+const db = [
   {
     data: { id: 1, name: "Siva" },
     routes: ["/users", "/data/:id", "/users/siva"],
@@ -222,80 +272,46 @@ From the above script the first route `/users` don't execute any method.
 The second route `/data/:id` execute the `override` method which overrides the response as `{id:1,name:"ram"}`.
 The third route `/users/siva` execute the `logTime` method which doesn't override any response but simply logs the time.
 
+### Common Middleware
+
+You could also provide a common middleware which runs for every routes.
+The common middleware method is provided inside the `config` object. Some routes can also be excluded from common middleware being executed using the `excludedRoutes`. For Example:
+
+```js
+import * as fakeResponse from "fake-response";
+
+const commonMiddleware = () => console.log(new Date());
+
+const db = [
+  {
+    data: "Hello World",
+    routes: ["/hello"],
+  },
+];
+
+const config: Config = {
+  port: 4000,
+  middleware: commonMiddleware,
+  excludeRoutes: ["/excludedRoute"],
+};
+
+fakeResponse.getResponse(db, config);
+```
+
+Here the `commonMiddleware` logs time for every route request except the `excludeRoutes`.
+
 ### Route types
 
 This package is built upon express jS. Please visit [expressJs](https://expressjs.com/en/guide/routing.html) for configuring different route paths.
 
 ### Simple example
 
-Here is sample configs that you can provide
+Here is simple example for starter. Runs at ["http://localhost:3000"]("http://localhost:3000")
 
 ```js
-import * as fake from "fake-response";
+import * as fakeResponse from "fake-response";
 
-import express from "express";
-import { RouteConfig } from "./route-config-model";
-
-const fs = require("fs"),
-  path = require("path");
-
-const logTime = (req: express.Request, res: express.Response, data: any) => {
-  console.log(new Date());
-};
-
-const override = (req: express.Request) => ({ id: 2, ...req.body });
-
-const getData = () => ({ id: 1, name: "Siva" });
-
-const routeConfigs: RouteConfig[] = [
-  {
-    data: { id: 1, name: "Siva" },
-    routes: ["/users/:id"],
-  },
-  {
-    data: "Hello World",
-    routes: ["/hello"],
-  },
-  {
-    data: getData(),
-    routes: ["/func"],
-  },
-  {
-    data: require("../assets/users.json"),
-    routes: ["/users", "/data/:id", "/users/siva"],
-    middlewares: [, override, logTime],
-  },
-  {
-    data: path.resolve(__dirname, "../assets/users.json"),
-    dataType: "file",
-    routes: ["/json"],
-  },
-  {
-    data: path.resolve(__dirname, "../assets/Sunset_Birds.jpg"),
-    dataType: "file",
-    routes: ["/image"],
-  },
-  {
-    data: path.resolve(__dirname, "../assets/article.txt"),
-    dataType: "file",
-    routes: ["/txt"],
-  },
-  {
-    data: "https://jsonplaceholder.typicode.com/todos/1",
-    dataType: "url",
-    routes: ["/todos/:id"],
-  },
-  {
-    data: {
-      url: "https://jsonplaceholder.typicode.com/todos",
-      config: {}, // can pass any authorization or other option. Please verify Axios
-    },
-    dataType: "url",
-    routes: ["/todos"],
-  },
-];
-
-fake.getResponse(routeConfigs, 3000);
+fakeResponse.getResponse(); // runs by default sample db and config
 ```
 
 ## Default Routes
@@ -304,15 +320,22 @@ fake.getResponse(routeConfigs, 3000);
 - `Db` - [http://localhost:3000/db](http://localhost:3000/db)
 - `Routes List` - [http://localhost:3000/routesList](http://localhost:3000/routesList)
 
-These can be overridden in the `route.js` configs
+The routes and port can be overridden in the `db.js` configs
+
+## API
+
+- `getResponse(db,config)` = generates a API for the given db
+- `getConfig()` = gets the current config
+- `getSampleDb()` = gets the sample db provided inside the script
+- `getDb()` = gets the all fetched data from the given file and url of the db
 
 ## Author
 
 **Sivaraman** - sendmsg2siva.siva@gmail.com
 
-- _Website_ - https://r35007.github.io/Siva_Profile/
-- _Portfolio_ - https://r35007.github.io/Siva_Profile/portfolio
-- _GitHub_ - https://github.com/R35007/Fake-Response
+- _Website_ - [https://r35007.github.io/Siva_Profile/](https://r35007.github.io/Siva_Profile/)
+- _Portfolio_ - [https://r35007.github.io/Siva_Profile/portfolio](https://r35007.github.io/Siva_Profile/portfolio)
+- _GitHub_ - [https://github.com/R35007/Fake-Response](https://github.com/R35007/Fake-Response)
 
 ## License
 

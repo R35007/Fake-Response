@@ -1,6 +1,6 @@
 import express from "express";
 
-export interface RouteConfig {
+export interface Db {
   data: string | DataUrl | Object;
   dataType?: DataType;
   routes: string[];
@@ -19,3 +19,9 @@ export type Middleware = (
   res: express.Response,
   data: any
 ) => any;
+
+export interface Config {
+  port?: number;
+  excludeRoutes?: string[];
+  middleware?: Middleware;
+}

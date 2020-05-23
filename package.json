@@ -1,22 +1,47 @@
 {
   "name": "fake-response",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "customize your own dynamic mock response",
   "main": "dist/index.js",
   "scripts": {
-    "start": "dist/index.js"
+    "start": "node dist/index.js",
+    "example": "node dist/example.js"
   },
   "files": [
     "dist",
     "src",
     "assets"
   ],
-  "author": "Siva",
+  "keywords": [
+    "mock",
+    "server",
+    "fake",
+    "mockserver",
+    "fakeserver",
+    "fakeresponse",
+    "mockdata",
+    "mockdb",
+    "localserver",
+    "local"
+  ],
+  "bin": {
+    "fake-response": "dist/example.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/R35007/Fake-Response"
+  },
+  "homepage": "https://github.com/R35007/Fake-Response",
+  "author": {
+    "name": "Sivaraman",
+    "email": "sendmsg2siva@gmail.com"
+  },
   "license": "ISC",
   "dependencies": {
     "axios": "^0.19.2",
     "body-parser": "^1.19.0",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "transcript": "0.0.6"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",

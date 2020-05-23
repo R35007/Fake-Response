@@ -1,5 +1,5 @@
 import express from "express";
-import { RouteConfig } from "./route-config-model";
+import { Db } from "./model";
 
 const fs = require("fs"),
   path = require("path");
@@ -12,14 +12,15 @@ const override = (req: express.Request) => ({ id: 2, ...req.body });
 
 const getData = () => ({ id: 1, name: "Siva" });
 
-const routeConfigs: RouteConfig[] = [
-  {
-    data: { id: 1, name: "Siva" },
-    routes: ["/users/:id"],
-  },
+export const db: Db[] = [
   {
     data: "Hello World",
     routes: ["/hello"],
+  },
+  {
+    data: { id: 1, name: "Siva" },
+    routes: ["/users/:id"],
+    middlewares: [() => ({ id: 1, name: "Ram" })],
   },
   {
     data: getData(),
@@ -59,5 +60,3 @@ const routeConfigs: RouteConfig[] = [
     routes: ["/todos"],
   },
 ];
-
-export default routeConfigs;
