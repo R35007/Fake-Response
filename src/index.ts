@@ -13,7 +13,7 @@ const fs = require("fs"),
 
 const availableRoutes: string[] = [];
 const defaultRoutes: string[] = [];
-const db: object = {};
+const fullDbData: object = {};
 const config: Config = {
   port: 3000,
   middleware: () => false,
@@ -24,8 +24,6 @@ export const getConfig = (): Config => config;
 
 export const getSampleDb = (): Db[] => sample_db;
 
-export const getDb = (): object => db;
-
 const setConfig = ({ port, middleware, excludeRoutes }: Config) => {
   config.port = port || config.port;
   config.middleware = middleware || config.middleware;
@@ -33,15 +31,18 @@ const setConfig = ({ port, middleware, excludeRoutes }: Config) => {
 };
 
 const startServer = () => {
-  app.listen(config.port, () => {
-    console.log(`Server listening at http://localhost:${config.port}`);
-    console.log();
+  return new Promise((resolve) => {
+    app.listen(config.port, () => {
+      console.log(`Server listening at http://localhost:${config.port}`);
+      console.log();
+      resolve();
+    });
   });
 };
 
 const isDuplicateRoute = (route: string, data: any) => {
   if (availableRoutes.indexOf(route) < 0) {
-    db[route] = data;
+    fullDbData[route] = data;
     return false;
   } else {
     console.log();
@@ -128,7 +129,7 @@ const log = () => {
     console.log();
   });
 
-  startServer();
+  return;
 };
 
 const createDefaultAPIS = () => {
@@ -144,46 +145,60 @@ const createDefaultAPIS = () => {
   if (availableRoutes.indexOf(DB) < 0) {
     defaultRoutes.push(DB);
     app.all(DB, (req, res) => {
-      res.send(db);
+      res.send(fullDbData);
     });
   }
   if (availableRoutes.indexOf(ROUTESLIST) < 0) {
     defaultRoutes.push(ROUTESLIST);
     app.all(ROUTESLIST, (req, res) => {
-      res.send(Object.keys(db));
+      res.send(Object.keys(fullDbData));
     });
   }
 
-  log();
+  return;
 };
 
-export const getResponse = (db?: Db[], config?: Config) => {
-  try {
-    if (!db) {
-      console.log();
-      console.log("Db not found. using sample DB");
-      db = getSampleDb();
-    }
-
-    if (!config) {
-      console.log("Config not found. using default Config");
-      console.log();
-      getConfig();
-    } else {
-      setConfig(config);
-    }
-
-    let requests = db.map(
-      (data: Db) =>
-        new Promise((resolve) => {
-          asyncFunction(data, resolve);
-        })
-    );
-
-    Promise.all(requests).then(() => {
-      createDefaultAPIS();
-    });
-  } catch (err) {
-    console.log(err);
+const getDbAndConfig = (userDb?: Db[], userConfig?: Config) => {
+  let db;
+  if (!userDb) {
+    console.log();
+    console.log("Db not found. using sample DB");
+    db = getSampleDb();
+  } else {
+    db = userDb;
   }
+
+  if (!config) {
+    console.log("Config not found. using default Config");
+    console.log();
+    getConfig();
+  } else {
+    setConfig(config);
+  }
+
+  return { db, config };
+};
+
+export const getResponse = (userDb?: Db[], userConfig?: Config) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const { db, config } = getDbAndConfig(userDb, userConfig);
+
+      let requests = db.map(
+        (data: Db) =>
+          new Promise((_resolve) => {
+            asyncFunction(data, _resolve);
+          })
+      );
+
+      Promise.all(requests)
+        .then(() => createDefaultAPIS())
+        .then(() => log())
+        .then(() => startServer())
+        .then(() => resolve({ db, config, fullDbData }));
+    } catch (err) {
+      console.log(err);
+      reject(err);
+    }
+  });
 };

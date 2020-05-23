@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "customize your own dynamic mock response",
   "main": "dist/index.js",
   "scripts": {
@@ -13,15 +13,22 @@
     "assets"
   ],
   "keywords": [
+    "JSON",
+    "REST",
+    "API",
+    "prototyping",
     "mock",
+    "mocking",
+    "test",
+    "testing",
+    "rest",
+    "data",
+    "dummy",
+    "sandbox",
     "server",
     "fake",
-    "mockserver",
-    "fakeserver",
-    "fakeresponse",
-    "mockdata",
-    "mockdb",
-    "localserver",
+    "response",
+    "db",
     "local"
   ],
   "bin": {

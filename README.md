@@ -324,10 +324,8 @@ The routes and port can be overridden in the `db.js` configs
 
 ## API
 
-- `getResponse(db,config)` = generates a API for the given db
-- `getConfig()` = gets the current config
+- `getResponse(db,config)` = generates a API and returns a promise of response `{db,config,fullDbData}`
 - `getSampleDb()` = gets the sample db provided inside the script
-- `getDb()` = gets the all fetched data from the given file and url of the db
 
 ## Author
 
