@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "customize your own dynamic mock response",
   "main": "dist/index.js",
   "scripts": {
