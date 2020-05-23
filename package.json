@@ -1,0 +1,26 @@
+{
+  "name": "fake-response",
+  "version": "1.0.0",
+  "description": "customize your own dynamic mock response",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "assets"
+  ],
+  "author": "Siva",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/body-parser": "^1.19.0",
+    "@types/express": "^4.17.6"
+  }
+}
