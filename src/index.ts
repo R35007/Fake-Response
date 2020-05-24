@@ -1,12 +1,53 @@
 import express from "express";
 import bodyParser from "body-parser";
 import axios from "axios";
-import { Db, Middleware, DataUrl, Config } from "./model";
-import { db as sample_db } from "./db";
+import chalk from "chalk";
+import {
+  Db,
+  Middleware,
+  MiddlewareParams,
+  DataUrl,
+  Config,
+  Globals,
+} from "./model";
+import { db as sample_db } from "./samples";
+
+const getStatusCodeColor = (statusCode: number) => {
+  if (statusCode === 200) {
+    return chalk.green(statusCode);
+  } else if (statusCode >= 300 && statusCode < 400) {
+    return chalk.blue(statusCode);
+  } else if (statusCode >= 400 && statusCode < 500) {
+    return chalk.red(statusCode);
+  } else {
+    return chalk.yellow(statusCode);
+  }
+};
+
+const logResponseTime = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const startHrTime = process.hrtime();
+
+  res.on("finish", () => {
+    const elapsedHrTime = process.hrtime(startHrTime);
+    const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
+    console.log(
+      `${req.method} ${req.path} ` +
+        getStatusCodeColor(res.statusCode) +
+        ` ${elapsedTimeInMs} ms`
+    );
+  });
+
+  next();
+};
 
 const app: express.Application = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(logResponseTime);
 
 const fs = require("fs"),
   path = require("path");
@@ -16,18 +57,30 @@ const defaultRoutes: string[] = [];
 const fullDbData: object = {};
 const config: Config = {
   port: 3000,
-  middleware: () => false,
-  excludeRoutes: [],
+  middleware: {
+    func: () => false,
+    excludeRoutes: [],
+  },
+  delay: {
+    time: 0,
+    excludeRoutes: [],
+  },
 };
+let globals: any = {};
 
 export const getConfig = (): Config => config;
 
 export const getSampleDb = (): Db[] => sample_db;
 
-const setConfig = ({ port, middleware, excludeRoutes }: Config) => {
+export const getGlobals = (): Globals => globals;
+
+export const clearGlobals = (): Globals => (globals = {});
+
+const setConfig = ({ port, middleware, delay }: Config) => {
   config.port = port || config.port;
-  config.middleware = middleware || config.middleware;
-  config.excludeRoutes = excludeRoutes || config.excludeRoutes;
+  config.middleware =
+    { ...config.middleware, ...middleware } || config.middleware;
+  config.delay = { ...config.delay, ...delay } || config.delay;
 };
 
 const startServer = () => {
@@ -52,26 +105,57 @@ const isDuplicateRoute = (route: string, data: any) => {
   }
 };
 
+const getMiddlewareValue = (
+  route: string,
+  middleware: Middleware,
+  middlewareParams: MiddlewareParams
+) => {
+  let common: Middleware | boolean = false;
+  const specific = middleware(...middlewareParams);
+
+  if (config.middleware.excludeRoutes.indexOf(route) < 0) {
+    common = config.middleware.func(...middlewareParams);
+  }
+
+  return { specific, common };
+};
+
+const getDelayTime = (route: string, delay: number) => {
+  let commonDelayTime = 0;
+
+  if (config.delay.excludeRoutes.indexOf(route) < 0) {
+    commonDelayTime = config.delay.time;
+  }
+
+  return typeof delay !== "undefined" && delay >= 0 ? delay : commonDelayTime;
+};
+
 const sendResponse = (
   data: any,
   dataType: string,
   route: string,
-  middleware: Middleware = () => {}
+  middleware: Middleware = () => {},
+  delay: number
 ) => {
   app.all(route, (req: express.Request, res: express.Response) => {
-    let commonMiddleware: Middleware | boolean = false;
-    const specificMiddleware = middleware(req, res, data);
-    if (config.excludeRoutes.indexOf(route) < 0) {
-      commonMiddleware = config.middleware(req, res, data);
-    }
-
-    const response = specificMiddleware || commonMiddleware || data;
-    dataType === "file" ? res.sendFile(response) : res.send(response);
+    const delayTime = getDelayTime(route, delay);
+    setTimeout(() => {
+      const params: MiddlewareParams = [req, res, data, globals];
+      const middlwares = getMiddlewareValue(route, middleware, params);
+      const response = middlwares.specific || middlwares.common || data;
+      dataType === "file" ? res.sendFile(response) : res.send(response);
+    }, delayTime);
   });
 };
 
 async function asyncFunction(db: Db, resolve: Function) {
-  const { data = "", dataType = "default", routes = [], middlewares = [] } = db;
+  const {
+    data = "",
+    dataType = "default",
+    routes = [],
+    middlewares = [],
+    delays = [],
+  } = db;
 
   let resp: any = "";
 
@@ -96,7 +180,7 @@ async function asyncFunction(db: Db, resolve: Function) {
 
     routes.map((route: string, i: number) => {
       if (!isDuplicateRoute(route, resp)) {
-        sendResponse(resp, dataType, route, middlewares[i]);
+        sendResponse(resp, dataType, route, middlewares[i], delays[i]);
       }
     });
   } catch (err) {
@@ -108,24 +192,24 @@ async function asyncFunction(db: Db, resolve: Function) {
 
 const log = () => {
   console.log();
-  console.log("Fake Response Server Started...");
+  console.log(chalk.green.bold("Done. Fake Response Server Started..."));
   console.log();
-  console.log("Resources : ");
+  console.log(chalk.white.bold("Resources : "));
   console.log();
   app._router.stack.map((r) => {
     if (r.route && r.route.path && defaultRoutes.indexOf(r.route.path) < 0) {
-      console.log("http://localhost:" + config.port + r.route.path);
+      console.log("  http://localhost:" + config.port + r.route.path);
     }
   });
   if (defaultRoutes.length > 0) {
     console.log();
-    console.log("Default Routes : ");
+    console.log(chalk.white.bold("Default Routes : "));
   }
   console.log();
   defaultRoutes.map((route) => {
     const name = route === "/" ? "HOME" : route.replace("/", "").toUpperCase();
-    console.log(name);
-    console.log("http://localhost:" + config.port + route);
+    console.log(chalk.white.bold(name));
+    console.log("  http://localhost:" + config.port + route);
     console.log();
   });
 
@@ -158,31 +242,39 @@ const createDefaultAPIS = () => {
   return;
 };
 
-const getDbAndConfig = (userDb?: Db[], userConfig?: Config) => {
+const init = (userDb: Db[], userConfig: Config, userGlobals: Globals) => {
   let db;
+  console.log();
+  console.log(chalk.blue("/{^_^}/ hi!"));
+  console.log();
+  console.log(chalk.gray("Loading Db"));
   if (!userDb) {
     console.log();
-    console.log("Db not found. using sample DB");
+    console.log(chalk.yellow("Oops, Db not found. Using sample DB"));
     db = getSampleDb();
   } else {
     db = userDb;
   }
 
-  if (!config) {
-    console.log("Config not found. using default Config");
-    console.log();
-    getConfig();
+  if (!userConfig) {
+    console.log(chalk.yellow("Oops, Config not found. Using default Config"));
   } else {
-    setConfig(config);
+    setConfig(userConfig);
   }
+
+  globals = { ...globals, ...userGlobals };
 
   return { db, config };
 };
 
-export const getResponse = (userDb?: Db[], userConfig?: Config) => {
+export const getResponse = (
+  userDb?: Db[],
+  userConfig?: Config,
+  userGlobals?: Globals
+) => {
   return new Promise((resolve, reject) => {
     try {
-      const { db, config } = getDbAndConfig(userDb, userConfig);
+      const { db, config } = init(userDb, userConfig, userGlobals);
 
       let requests = db.map(
         (data: Db) =>
@@ -195,7 +287,7 @@ export const getResponse = (userDb?: Db[], userConfig?: Config) => {
         .then(() => createDefaultAPIS())
         .then(() => log())
         .then(() => startServer())
-        .then(() => resolve({ db, config, fullDbData }));
+        .then(() => resolve({ db, config, fullDbData, globals }));
     } catch (err) {
       console.log(err);
       reject(err);

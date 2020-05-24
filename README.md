@@ -12,9 +12,12 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 - [How To Use](#how-to-use)
   - [Default Config](#default-config)
   - [Sample DB](#sample-db)
+  - [Globals](#globals)
+  - [Sharing between Routes](#sharing-between-routes)
   - [Default Data](#default-data)
   - [File Data](#file-data)
   - [URL Data](#url-data)
+  - [Delay Time](#delay-time)
   - [Specific Middleware](#specific-middleware)
   - [Common Middleware](#common-middleware)
   - [Route types](#route-types)
@@ -81,6 +84,7 @@ nodemon db.js
 - Get a full fake REST API in ease
 - A single response can be point to multiple route paths.
 - Any file can be send as a response. (json, image, txt, etc..)
+- With the help of `Globals` you could share the values between routes which helps in many way to manipulate the response.
 - The mock data can be maintained in different json files and urls which helps to organize your mock data
 - The return response can be manipulated or overridden by a middleware method. This helps to return a response depending on the post data or request params.
 
@@ -123,6 +127,8 @@ const db = [
   - `file` - To send any file. Note : you must provide a absolute path of the file in the `data` property
   - `url` - fetch data from any url
 
+- It always a better to return something from the middleware methods. If you have nothing to return just return false by default.
+
 ## How To Use
 
 Based on the previous `db.js` file, here are all the kinds of data and config you can use. Lets start with default config
@@ -134,8 +140,14 @@ You can provide your port, common middleware in the config object, if not the sc
 ```js
 const config: Config = {
   port: 3000,
-  middleware: () => false,
-  excludeRoutes: [],
+  middleware: {
+    func: () => false,
+    excludeRoutes: [],
+  },
+  delay: {
+    time: 0, // must give in milliseconds
+    excludeRoutes: [],
+  },
 };
 ```
 
@@ -153,8 +165,14 @@ const db = [
 
 const config: Config = {
   port: 4000,
-  middleware: () => (req, res, data) => console.log(new Date()),
-  excludeRoutes: ["/excludedRoute"],
+  middleware: {
+    func: () => (req, res, data) => console.log(new Date()),
+    excludeRoutes: ["/excludedRoute"],
+  },
+  delay: {
+    time: 2000, // must give in milliseconds
+    excludeRoutes: ["/excludedRoute"]],
+  },
 };
 
 fakeResponse.getResponse(db, config);
@@ -163,7 +181,70 @@ fakeResponse.getResponse(db, config);
 ### Sample Db
 
 If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the sample db ["here"]("https://github.com/R35007/Fake-Response/blob/master/src/db.ts")
+You could find the sample db in ["https://github.com/R35007/Fake-Response/blob/master/src/samples.ts"]("https://github.com/R35007/Fake-Response/blob/master/src/samples.ts")
+
+### Globals
+
+Using **Globals** you could store any value in the `globals` object and can be shared across any routes.
+This also helps to manipulate the response in many ways. For Example :
+
+```js
+import fakeResponse from "fake-response";
+
+const responseSequence = (req, res, data, globals) => {
+  const responses = [data, "init", "start", "hold", "stop"];
+  globals.value = responses[responses.indexOf(globals["value"]) + 1]; // loop through responses for each request
+  return globals.value;
+};
+const db = [
+  {
+    data: "Response changes for each request",
+    routes: ["/sequence"],
+    middlewares: [responseSequence],
+  },
+];
+const globals = {
+  value: false, // store the default value here
+};
+
+fakeResponse.getResponse(db, null, globals); // second param use the default configs
+```
+
+Now you get a different response for each request.
+
+### Sharing between Routes
+
+Lets see a simple example of sharing responses between Routes.
+
+```js
+import fakeResponse from "fake-response";
+
+const setResponseToGlobal = (req, res, data, globals) => {
+  globals.sharedResponse = data;
+  return false;
+};
+
+const getSharedResponse = (req, res, data, globals) => {
+  return globals.sharedResponse;
+};
+const db = [
+  {
+    data: "Response changes for each request",
+    routes: ["/shareResponse"],
+    middlewares: [setResponseToGlobal],
+  },
+  {
+    routes: ["/getResponse"],
+    middlewares: [getSharedResponse], // returns the `This response is shared` from `/shareResponse` route
+  },
+];
+const globals = {
+  value: false, // store the default value here
+  sharedResponse: false,
+};
+
+fakeResponse.getResponse(data, db, globals);
+```
 
 ### Default Data
 
@@ -245,6 +326,44 @@ const db = [
 ];
 ```
 
+### Delay Time
+
+You could also delay the response of your request. It can be done in both the specific and common way.
+Here are some example for both specify and common delays.
+
+```js
+import fakeResponse from "fake-response";
+
+const responseSequence = (req, res, data, globals) => {
+  const responses = [data, "init", "start", "hold", "stop"];
+  globals.value = responses[responses.indexOf(globals["value"]) + 1]; // loop through responses for each request
+  return globals.value;
+};
+const db = [
+  {
+    data: "Hello World",
+    routes: ["/hello"], //delays 500 milliseconds by common config delay
+  },
+  {
+    data: "This response is delayed for 6000 milliseconds",
+    routes: ["/delay"],
+    delays: [6000], // delays by 6s (6000 milliseconds)
+  },
+];
+
+const config = {
+  port: 3000,
+  delay: {
+    time: 500,
+    excludeRoutes: ["/excludedRoutes"],
+  },
+};
+
+fakeResponse.getResponse(db, db);
+```
+
+Note : Always delay time must be given in `milliseconds`
+
 ### Specific Middleware
 
 You could any method as a middleware to perform certain script actions before sending you the response.
@@ -253,24 +372,25 @@ The methods are provided in `middlewares` property in an array the index of the 
 For Example:
 
 ```js
-const logTime = (req, res, data) => {
+const logTime = () => {
   console.log(new Date());
+  return false;
 };
 
-const override = () => ({ ...data, name: "ram" });
+const override = () => ({ ...data, name: "bar" });
 
 const db = [
   {
-    data: { id: 1, name: "Siva" },
-    routes: ["/users", "/data/:id", "/users/siva"],
+    data: { id: 1, name: "foo" },
+    routes: ["/users", "/data/:id", "/users/foo"],
     middlewares: [, override, logTime],
   },
 ];
 ```
 
 From the above script the first route `/users` don't execute any method.
-The second route `/data/:id` execute the `override` method which overrides the response as `{id:1,name:"ram"}`.
-The third route `/users/siva` execute the `logTime` method which doesn't override any response but simply logs the time.
+The second route `/data/:id` execute the `override` method which overrides the response as `{id:1,name:"bar"}`.
+The third route `/users/foo` execute the `logTime` method which doesn't override any response but simply logs the time.
 
 ### Common Middleware
 
@@ -291,8 +411,10 @@ const db = [
 
 const config: Config = {
   port: 4000,
-  middleware: commonMiddleware,
-  excludeRoutes: ["/excludedRoute"],
+  middleware: {
+    func: commonMiddleware,
+    excludeRoutes: ["/excludedRoute"],
+  },
 };
 
 fakeResponse.getResponse(db, config);
@@ -324,8 +446,72 @@ The routes and port can be overridden in the `db.js` configs
 
 ## API
 
-- `getResponse(db,config)` = generates a API and returns a promise of response `{db,config,fullDbData}`
-- `getSampleDb()` = gets the sample db provided inside the script
+**`fakeResponse.getResponse([options])`**
+
+Returns a promise with values of `db, config, fullDbData, globals` used by Fake Response Server.
+
+- options
+
+  - `db` db object to generate routes. [optional] (default : sample_db)
+  - `config` object to set port, middleware, delays. [optional]
+    default Config:
+    ```js
+    const config = {
+      port: 3000,
+      middleware: {
+        func: () => false,
+        excludeRoutes: [],
+      },
+      delay: {
+        time: 0,
+        excludeRoutes: [],
+      },
+    };
+    ```
+  - `globals` helps to set global values [optional] (default: {})
+
+- Example
+
+```js
+        import * as fakeResponse from "fake-response";
+
+        const db = [
+          {
+            data : "Hello World",
+            routes:["/hello"]
+          }
+        ]
+
+        const config = {
+          port = 4000
+        }
+
+        const global = {
+          value : "This value can be shared "
+        }
+
+        fakeResponse.getResponse(db,config,globals)
+        .then({db,config,fullDbData,globals} => {
+          // do something
+        }));
+
+```
+
+**`fakeResponse.getConfig()`**
+
+Returns the current config of the Fake Response Server
+
+**`fakeResponse.getSampleDb()`**
+
+Returns the sample Db of the Fake Response Server
+
+**`fakeResponse.getGlobals()`**
+
+Returns the global values used by the Fake Response Server.
+
+**`fakeResponse.clearGlobals()`**
+
+Clears the global values used by the Fake Response Server.
 
 ## Author
 

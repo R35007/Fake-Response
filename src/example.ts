@@ -1,14 +1,17 @@
 #! /usr/bin/env node
 import * as fakeResponse from "./index";
 
-import { db } from "./db";
+import { db, config, globals } from "./samples";
 
-fakeResponse
-  .getResponse(db, {
-    port: 3000,
-    middleware: () => console.log(new Date()),
-    excludeRoutes: ["/hello"],
-  })
-  .then(({ db, config, fullDbData }) => {
-    console.log({ db, config, fullDbData });
-  });
+fakeResponse.getResponse();
+
+// fakeResponse
+//   .getResponse(db, config, globals)
+//   .then(({ db, config, fullDbData, globals }) => {
+//     // console.log({ db, config, fullDbData, globals });
+//   });
+
+// const config = fakeResponse.getConfig(); // returns the default config
+// const sampleDb = fakeResponse.getSampleDb(); // returns the sample Db
+// const getGlobals = fakeResponse.getGlobals(); // returns the Global values
+// const isGlobalsCleared = fakeResponse.clearGlobals(); // returns true and clears the Global values

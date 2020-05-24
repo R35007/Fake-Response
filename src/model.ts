@@ -1,10 +1,11 @@
 import express from "express";
 
 export interface Db {
-  data: string | DataUrl | Object;
+  data?: string | DataUrl | Object;
   dataType?: DataType;
   routes: string[];
   middlewares?: Array<Middleware>;
+  delays?: number[];
 }
 
 export interface DataUrl {
@@ -14,14 +15,27 @@ export interface DataUrl {
 
 type DataType = "default" | "file" | "url";
 
-export type Middleware = (
-  req: express.Request,
-  res: express.Response,
-  data: any
-) => any;
+export type Middleware = (...MiddlewareParams) => any;
 
 export interface Config {
   port?: number;
-  excludeRoutes?: string[];
-  middleware?: Middleware;
+  middleware?: {
+    func: Middleware;
+    excludeRoutes?: string[];
+  };
+  delay?: {
+    time: number;
+    excludeRoutes?: string[];
+  };
 }
+
+export interface Globals {
+  [key: string]: any;
+}
+
+export type MiddlewareParams = [
+  express.Request,
+  express.Response,
+  any,
+  Globals
+];

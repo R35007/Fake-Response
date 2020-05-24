@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "customize your own dynamic mock response",
   "main": "dist/index.js",
   "scripts": {
@@ -47,6 +47,7 @@
   "dependencies": {
     "axios": "^0.19.2",
     "body-parser": "^1.19.0",
+    "chalk": "^4.0.0",
     "express": "^4.17.1",
     "transcript": "0.0.6"
   },
