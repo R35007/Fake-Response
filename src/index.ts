@@ -10,7 +10,11 @@ import {
   Config,
   Globals,
 } from "./model";
-import { db as sample_db } from "./samples";
+import { default_db, default_config, default_globals } from "./defaults";
+
+let globals: any = { ...default_globals };
+let db: any = [...default_db];
+let config: any = { ...default_config };
 
 const getStatusCodeColor = (statusCode: number) => {
   if (statusCode === 200) {
@@ -55,33 +59,12 @@ const fs = require("fs"),
 const availableRoutes: string[] = [];
 const defaultRoutes: string[] = [];
 const fullDbData: object = {};
-const config: Config = {
-  port: 3000,
-  middleware: {
-    func: () => false,
-    excludeRoutes: [],
-  },
-  delay: {
-    time: 0,
-    excludeRoutes: [],
-  },
-};
-let globals: any = {};
 
 export const getConfig = (): Config => config;
 
-export const getSampleDb = (): Db[] => sample_db;
+export const getDb = (): Db[] => db;
 
 export const getGlobals = (): Globals => globals;
-
-export const clearGlobals = (): Globals => (globals = {});
-
-const setConfig = ({ port, middleware, delay }: Config) => {
-  config.port = port || config.port;
-  config.middleware =
-    { ...config.middleware, ...middleware } || config.middleware;
-  config.delay = { ...config.delay, ...delay } || config.delay;
-};
 
 const startServer = () => {
   return new Promise((resolve) => {
@@ -275,7 +258,6 @@ const createDefaultAPIS = () => {
 };
 
 const init = (userDb: Db[], userConfig: Config, userGlobals: Globals) => {
-  let db;
   console.log();
   console.log(chalk.blue("/{^_^}/ hi!"));
   console.log();
@@ -283,20 +265,17 @@ const init = (userDb: Db[], userConfig: Config, userGlobals: Globals) => {
   if (!userDb) {
     console.log();
     console.log(chalk.yellow("Oops, Db not found. Using sample DB"));
-    db = getSampleDb();
-  } else {
-    db = userDb;
   }
-
   if (!userConfig) {
     console.log(chalk.yellow("Oops, Config not found. Using default Config"));
-  } else {
-    setConfig(userConfig);
+  }
+  if (!userGlobals) {
+    console.log(chalk.yellow("Oops, Globals not found. Using default Globals"));
   }
 
+  db = userDb || db;
+  config = { ...config, ...userConfig };
   globals = { ...globals, ...userGlobals };
-
-  return { db, config };
 };
 
 export const getResponse = (
@@ -306,7 +285,7 @@ export const getResponse = (
 ) => {
   return new Promise((resolve, reject) => {
     try {
-      const { db, config } = init(userDb, userConfig, userGlobals);
+      init(userDb, userConfig, userGlobals);
 
       let requests = db.map(
         (data: Db) =>

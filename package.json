@@ -1,11 +1,11 @@
 {
   "name": "fake-response",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "customize your own dynamic fake response",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "example": "node dist/example.js"
+    "fake-response": "node dist/fake-response.js"
   },
   "files": [
     "dist",
@@ -31,7 +31,7 @@
     "local"
   ],
   "bin": {
-    "fake-response": "dist/example.js"
+    "fake-response": "dist/fake-response.js"
   },
   "repository": {
     "type": "git",
@@ -47,8 +47,7 @@
     "axios": "^0.19.2",
     "body-parser": "^1.19.0",
     "chalk": "^4.0.0",
-    "express": "^4.17.1",
-    "transcript": "0.0.6"
+    "express": "^4.17.1"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",

@@ -1,9 +1,14 @@
 #! /usr/bin/env node
 import * as fakeResponse from "./index";
 
-import { db, config, globals } from "./samples";
+const [dbPath = "./defaults.js"] = process.argv.slice(2);
 
-fakeResponse.getResponse();
+try {
+  const { db, config, globals } = require(decodeURIComponent(dbPath));
+  fakeResponse.getResponse(db, config, globals);
+} catch (err) {
+  console.log(err);
+}
 
 // fakeResponse
 //   .getResponse(db, config, globals)

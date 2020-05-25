@@ -1,4 +1,3 @@
-import express from "express";
 import { Db, Middleware, Config, Globals } from "./model";
 
 const path = require("path");
@@ -6,11 +5,6 @@ const path = require("path");
 const override: Middleware = () => ({
   id: 2,
   value: "This is a overridden response",
-});
-
-const getData = () => ({
-  id: 1,
-  value: "Lorem ipsum dolor sit, amet consectetur adipisicing elit.",
 });
 
 const responseSequence: Middleware = ({ data, globals }) => {
@@ -28,7 +22,7 @@ const getSharedResponse: Middleware = ({ globals }) => {
   return globals.sharedResponse;
 };
 
-export const db: Db[] = [
+export const default_db: Db[] = [
   {
     data: "Hello World",
     routes: ["/hello"],
@@ -56,10 +50,6 @@ export const db: Db[] = [
     data: { id: 1, value: "My Response" },
     routes: ["/override", "/override/:id"],
     middlewares: override,
-  },
-  {
-    data: getData(),
-    routes: ["/func"],
   },
   {
     data: require("../assets/users.json"),
@@ -92,19 +82,20 @@ export const db: Db[] = [
   },
 ];
 
-export const config: Config = {
+export const default_config: Config = {
   port: 3000,
   middleware: {
-    func: () => console.log(new Date()),
-    excludeRoutes: ["/hello"],
+    func: () => false,
+    excludeRoutes: [],
   },
   delay: {
-    time: 500,
-    excludeRoutes: ["/hello"],
+    time: 0, // must be in milliseconds
+    excludeRoutes: [],
   },
 };
 
-export const globals: Globals = {
-  value: false,
-  sharedResponse: false,
-};
+export const default_globals: Globals = {};
+
+export const db = default_db;
+export const config = default_config;
+export const globals = default_globals;

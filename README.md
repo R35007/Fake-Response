@@ -32,7 +32,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 Install Fake Response
 
 ```
-npm install  fake-response
+npm install -g fake-response
 ```
 
 Create a `db.js` file
@@ -51,13 +51,19 @@ const config = {
   port: 3000,
 };
 
-fakeResponse.getResponse(db, config);
+const globals = {
+  value: "my Defaults",
+};
+
+module.exports = { db, config, globals }; // exports must defined at given name.
+
+fakeResponse.getResponse(db, config, globals);
 ```
 
 Run the following command on the node command line
 
 ```sh
-node db.js
+fake-response "[absolute path]/db.js"  (or)  node db.js
 ```
 
 Now if you go to [http://localhost:3000/hello](http://localhost:3000/hello), you'll get
@@ -181,7 +187,7 @@ fakeResponse.getResponse(db, config);
 ### Sample Db
 
 If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples.ts)
+You could find the default db [here](https://github.com/R35007/Fake-Response/blob/master/src/defaults.ts)
 
 ### Globals
 
@@ -471,7 +477,7 @@ Returns a promise with values of `db, config, fullDbData, globals` used by Fake 
 
 - Defaults
 
-  - `sample_db` : You can find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples.ts):
+  - `sample_db` : You can find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/defaults.ts):
   - `default-config` :
     ```js
     const config = {
@@ -519,17 +525,13 @@ Returns a promise with values of `db, config, fullDbData, globals` used by Fake 
 
 Returns the current config of the Fake Response Server
 
-**`fakeResponse.getSampleDb()`**
+**`fakeResponse.getDb()`**
 
-Returns the sample Db of the Fake Response Server
+Returns the current Db of the Fake Response Server
 
 **`fakeResponse.getGlobals()`**
 
-Returns the global values used by the Fake Response Server.
-
-**`fakeResponse.clearGlobals()`**
-
-Clears the global values used by the Fake Response Server.
+Returns the current global values used by the Fake Response Server.
 
 ## Author
 
