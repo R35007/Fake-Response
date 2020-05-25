@@ -181,7 +181,7 @@ fakeResponse.getResponse(db, config);
 ### Sample Db
 
 If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/db.ts)
+You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples.ts)
 
 ### Globals
 
@@ -471,7 +471,7 @@ Returns a promise with values of `db, config, fullDbData, globals` used by Fake 
 
 - Defaults
 
-  - `sample_db` : You can find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/db.ts):
+  - `sample_db` : You can find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples.ts):
   - `default-config` :
     ```js
     const config = {
