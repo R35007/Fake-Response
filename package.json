@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "customize your own dynamic fake response",
   "main": "dist/index.js",
   "scripts": {

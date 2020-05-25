@@ -107,7 +107,7 @@ const db = [
 - You could also override the response. For example :
 
 ```js
-const middleware = (req, res, data) => {
+const middleware = ({ data }) => {
   return { ...data, id: 1 }; // you could return any response you wish
 };
 const db = [
@@ -166,7 +166,7 @@ const db = [
 const config: Config = {
   port: 4000,
   middleware: {
-    func: () => (req, res, data) => console.log(new Date()),
+    func: () => console.log(new Date()),
     excludeRoutes: ["/excludedRoute"],
   },
   delay: {
@@ -191,7 +191,7 @@ This also helps to manipulate the response in many ways. For Example :
 ```js
 import fakeResponse from "fake-response";
 
-const responseSequence = (req, res, data, globals) => {
+const responseSequence = ({ data, globals }) => {
   const responses = [data, "init", "start", "hold", "stop"];
   globals.value = responses[responses.indexOf(globals["value"]) + 1]; // loop through responses for each request
   return globals.value;
@@ -219,12 +219,12 @@ Lets see a simple example of sharing responses between Routes.
 ```js
 import fakeResponse from "fake-response";
 
-const setResponseToGlobal = (req, res, data, globals) => {
+const setResponseToGlobal = ({ globals }) => {
   globals.sharedResponse = data;
   return false;
 };
 
-const getSharedResponse = (req, res, data, globals) => {
+const getSharedResponse = ({ globals }) => {
   return globals.sharedResponse;
 };
 const db = [
@@ -329,7 +329,7 @@ Here are some example for both specify and common delays.
 ```js
 import fakeResponse from "fake-response";
 
-const responseSequence = (req, res, data, globals) => {
+const responseSequence = ({ data, globals }) => {
   const responses = [data, "init", "start", "hold", "stop"];
   globals.value = responses[responses.indexOf(globals["value"]) + 1]; // loop through responses for each request
   return globals.value;
