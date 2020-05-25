@@ -3,6 +3,7 @@
 <head>
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
     integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous" />
+  <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
   <title>Fake Response</title>
   <style>
     body {
@@ -186,7 +187,7 @@
     }
 
     function ResourceList({ db }) {
-      const defaultRoutes = ["/db", "/routesList"].filter(r => Object.keys(db).indexOf(r) < 0);
+      const defaultRoutes = ["/db", "/routesList", "/favicon.ico"].filter(r => Object.keys(db).indexOf(r) < 0);
       return `
     <ul>
       ${[...Object.keys(db), ...defaultRoutes]

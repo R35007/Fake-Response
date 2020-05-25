@@ -4,8 +4,8 @@ export interface Db {
   data?: string | DataUrl | Object;
   dataType?: DataType;
   routes: string[];
-  middlewares?: Array<Middleware>;
-  delays?: number[];
+  middlewares?: Middleware | Array<Middleware>;
+  delays?: number | number[];
 }
 
 export interface DataUrl {
@@ -15,7 +15,7 @@ export interface DataUrl {
 
 type DataType = "default" | "file" | "url";
 
-export type Middleware = (...MiddlewareParams) => any;
+export type Middleware = (param: MiddlewareParams) => any;
 
 export interface Config {
   port?: number;
@@ -33,9 +33,9 @@ export interface Globals {
   [key: string]: any;
 }
 
-export type MiddlewareParams = [
-  express.Request,
-  express.Response,
-  any,
-  Globals
-];
+export interface MiddlewareParams {
+  req: express.Request;
+  res: express.Response;
+  data: any;
+  globals: Globals;
+}

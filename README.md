@@ -123,7 +123,7 @@ const db = [
 - If the function you provide doesn't return anything then you will receive the default data which u have provided
 - It has three different data Types.
 
-  - `default` - The data can be in form of string | number | json
+  - `default` - The data can be in form of string, number, json
   - `file` - To send any file. Note : you must provide a absolute path of the file in the `data` property
   - `url` - fetch data from any url
 
@@ -181,7 +181,7 @@ fakeResponse.getResponse(db, config);
 ### Sample Db
 
 If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the sample db in ["https://github.com/R35007/Fake-Response/blob/master/src/samples.ts"]("https://github.com/R35007/Fake-Response/blob/master/src/samples.ts")
+You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/db.ts)
 
 ### Globals
 
@@ -248,7 +248,7 @@ fakeResponse.getResponse(data, db, globals);
 
 ### Default Data
 
-By default the data can be in form of JSON | text | number. The following example are the default data types.
+By default the data can be in form of JSON, text, number. The following example are the default data types.
 Here the property `dataType` is optional. By default the property `dataType` value is `default`
 
 ```js
@@ -265,7 +265,7 @@ const db = [
   {
     data: {
       id: 1,
-      author: "Siva",
+      value: "Lorem ipsum dolor sit, amet consectetur adipisicing elit.",
     },
     routes: ["/json"],
   },
@@ -286,11 +286,6 @@ const db = [
     data: path.resolve(__dirname, "../assets/users.json"), // path.resolve helps to provide you the absolute path of the file.
     dataType: "file",
     routes: ["/json"],
-  },
-  {
-    data: path.resolve(__dirname, "../assets/Sunset_Birds.jpg"),
-    dataType: "file",
-    routes: ["/image"],
   },
   {
     data: path.resolve(__dirname, "../assets/article.txt"),
@@ -346,8 +341,18 @@ const db = [
   },
   {
     data: "This response is delayed for 6000 milliseconds",
-    routes: ["/delay"],
+    routes: ["/delayEx0"],
     delays: [6000], // delays by 6s (6000 milliseconds)
+  },
+  {
+    data: "This response is delayed for 6000 milliseconds",
+    routes: ["/delayEx1", "/delayEx2"],
+    delays: [, 6000], // delays 6s only for the second route
+  },
+  {
+    data: "This response is delayed for 6000 milliseconds",
+    routes: ["/delayEx3", "/delayEx4"],
+    delays: 6000, // delays 6s for every routes of this object
   },
 ];
 
@@ -384,6 +389,11 @@ const db = [
     data: { id: 1, name: "foo" },
     routes: ["/users", "/data/:id", "/users/foo"],
     middlewares: [, override, logTime],
+  },
+  {
+    data: { id: 1, name: "foo" },
+    routes: ["/parent", "/parent/:id", "/parent/child"],
+    middlewares: override, // executes override for every route of this object
   },
 ];
 ```
@@ -441,20 +451,28 @@ fakeResponse.getResponse(); // runs by default sample db and config
 - `Home` - [http://localhost:3000](http://localhost:3000)
 - `Db` - [http://localhost:3000/db](http://localhost:3000/db)
 - `Routes List` - [http://localhost:3000/routesList](http://localhost:3000/routesList)
+- `Favicon` - [http://localhost:3000/favicon.ico](http://localhost:3000/favicon.ico)
 
 The routes and port can be overridden in the `db.js` configs
 
 ## API
 
-**`fakeResponse.getResponse([options])`**
+**`fakeResponse.getResponse([params])`**
 
 Returns a promise with values of `db, config, fullDbData, globals` used by Fake Response Server.
 
-- options
+#### Params
 
-  - `db` db object to generate routes. [optional] (default : sample_db)
-  - `config` object to set port, middleware, delays. [optional]
-    default Config:
+| Name    | Type   | Required | Default        | Description                                            |
+| ------- | ------ | -------- | -------------- | ------------------------------------------------------ |
+| db      | object | No       | sample_db      | This object generates the local rest api.              |
+| config  | object | No       | default_config | This object sets the port, common middleware and delay |
+| globals | object | No       | {}             | This object helps to store the global values           |
+
+- Defaults
+
+  - `sample_db` : You can find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/db.ts):
+  - `default-config` :
     ```js
     const config = {
       port: 3000,
@@ -468,7 +486,7 @@ Returns a promise with values of `db, config, fullDbData, globals` used by Fake 
       },
     };
     ```
-  - `globals` helps to set global values [optional] (default: {})
+  - `globals` : {}
 
 - Example
 
@@ -515,7 +533,7 @@ Clears the global values used by the Fake Response Server.
 
 ## Author
 
-**Sivaraman** - sendmsg2siva.siva@gmail.com
+**Sivaraman** - [sendmsg2siva.siva@gmail.com](sendmsg2siva.siva@gmail.com)
 
 - _Website_ - [https://r35007.github.io/Siva_Profile/](https://r35007.github.io/Siva_Profile/)
 - _Portfolio_ - [https://r35007.github.io/Siva_Profile/portfolio](https://r35007.github.io/Siva_Profile/portfolio)
@@ -523,4 +541,4 @@ Clears the global values used by the Fake Response Server.
 
 ## License
 
-MIT
+ISC

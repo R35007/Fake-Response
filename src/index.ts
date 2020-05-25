@@ -108,13 +108,13 @@ const isDuplicateRoute = (route: string, data: any) => {
 const getMiddlewareValue = (
   route: string,
   middleware: Middleware,
-  middlewareParams: MiddlewareParams
+  params: MiddlewareParams
 ) => {
   let common: Middleware | boolean = false;
-  const specific = middleware(...middlewareParams);
+  const specific = middleware(params);
 
   if (config.middleware.excludeRoutes.indexOf(route) < 0) {
-    common = config.middleware.func(...middlewareParams);
+    common = config.middleware.func(params);
   }
 
   return { specific, common };
@@ -138,14 +138,29 @@ const sendResponse = (
   delay: number
 ) => {
   app.all(route, (req: express.Request, res: express.Response) => {
-    const delayTime = getDelayTime(route, delay);
-    setTimeout(() => {
-      const params: MiddlewareParams = [req, res, data, globals];
-      const middlwares = getMiddlewareValue(route, middleware, params);
-      const response = middlwares.specific || middlwares.common || data;
-      dataType === "file" ? res.sendFile(response) : res.send(response);
-    }, delayTime);
+    try {
+      const delayTime = getDelayTime(route, delay);
+      setTimeout(() => {
+        const params: MiddlewareParams = { req, res, data, globals };
+        const middlwares = getMiddlewareValue(route, middleware, params);
+        const response = middlwares.specific || middlwares.common || data;
+        dataType === "file" ? res.sendFile(response) : res.send(response);
+      }, delayTime);
+    } catch (err) {
+      console.log();
+      console.error(err);
+      console.log();
+      res.send(err);
+    }
   });
+};
+
+const fillArray = (value: Middleware | number, len: number) => {
+  var arr = [];
+  for (var i = 0; i < len; i++) {
+    arr.push(value);
+  }
+  return arr;
 };
 
 async function asyncFunction(db: Db, resolve: Function) {
@@ -178,13 +193,23 @@ async function asyncFunction(db: Db, resolve: Function) {
       );
     }
 
+    const len = routes.length;
+
+    const mdlwar = Array.isArray(middlewares)
+      ? middlewares
+      : fillArray(middlewares, len);
+
+    const dly = Array.isArray(delays) ? delays : fillArray(delays, len);
+
     routes.map((route: string, i: number) => {
       if (!isDuplicateRoute(route, resp)) {
-        sendResponse(resp, dataType, route, middlewares[i], delays[i]);
+        sendResponse(resp, dataType, route, mdlwar[i], dly[i]);
       }
     });
   } catch (err) {
+    console.log();
     console.error(err);
+    console.log();
   } finally {
     resolve();
   }
@@ -219,7 +244,8 @@ const log = () => {
 const createDefaultAPIS = () => {
   const HOME = "/",
     DB = "/db",
-    ROUTESLIST = "/routesList";
+    ROUTESLIST = "/routesList",
+    FAVICON = "/favicon.ico";
   if (availableRoutes.indexOf(HOME) < 0) {
     defaultRoutes.push(HOME);
     app.all(HOME, (req, res) => {
@@ -236,6 +262,12 @@ const createDefaultAPIS = () => {
     defaultRoutes.push(ROUTESLIST);
     app.all(ROUTESLIST, (req, res) => {
       res.send(Object.keys(fullDbData));
+    });
+  }
+  if (availableRoutes.indexOf(FAVICON) < 0) {
+    defaultRoutes.push(FAVICON);
+    app.all(FAVICON, (req, res) => {
+      res.sendFile(path.join(__dirname, "../assets/favicon.ico"));
     });
   }
 
@@ -289,7 +321,9 @@ export const getResponse = (
         .then(() => startServer())
         .then(() => resolve({ db, config, fullDbData, globals }));
     } catch (err) {
-      console.log(err);
+      console.log();
+      console.error(err);
+      console.log();
       reject(err);
     }
   });

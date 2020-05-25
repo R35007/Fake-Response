@@ -1,42 +1,30 @@
 import express from "express";
-import { Db, Globals } from "./model";
+import { Db, Middleware, Config, Globals } from "./model";
 
 const path = require("path");
 
-const override = () => ({
+const override: Middleware = () => ({
   id: 2,
   value: "This is a overridden response",
 });
 
-const getData = () => ({ id: 1, name: "Siva" });
+const getData = () => ({
+  id: 1,
+  value: "Lorem ipsum dolor sit, amet consectetur adipisicing elit.",
+});
 
-const responseSequence = (
-  req: express.Request,
-  res: express.Response,
-  data: any,
-  globals: Globals
-) => {
+const responseSequence: Middleware = ({ data, globals }) => {
   const responses = [data, "init", "start", "hold", "stop"];
   globals.value = responses[responses.indexOf(globals["value"]) + 1]; // loop through responses for each request
   return globals.value;
 };
 
-const setResponseToGlobal = (
-  req: express.Request,
-  res: express.Response,
-  data: any,
-  globals: Globals
-) => {
+const setResponseToGlobal: Middleware = ({ data, globals }) => {
   globals.sharedResponse = data;
   return false;
 };
 
-const getSharedResponse = (
-  req: express.Request,
-  res: express.Response,
-  data: any,
-  globals: Globals
-) => {
+const getSharedResponse: Middleware = ({ globals }) => {
   return globals.sharedResponse;
 };
 
@@ -48,12 +36,12 @@ export const db: Db[] = [
   {
     data: "Response changes for each request",
     routes: ["/sequence"],
-    middlewares: [responseSequence],
+    middlewares: responseSequence,
   },
   {
     data: "This response is shared",
     routes: ["/shareResponse"],
-    middlewares: [setResponseToGlobal],
+    middlewares: setResponseToGlobal,
   },
   {
     routes: ["/getResponse"],
@@ -62,12 +50,12 @@ export const db: Db[] = [
   {
     data: "This response is delayed for 6000 milliseconds",
     routes: ["/delay"],
-    delays: [6000],
+    delays: 6000,
   },
   {
     data: { id: 1, value: "My Response" },
-    routes: ["/users/:id"],
-    middlewares: [override],
+    routes: ["/override", "/override/:id"],
+    middlewares: override,
   },
   {
     data: getData(),
@@ -77,16 +65,12 @@ export const db: Db[] = [
     data: require("../assets/users.json"),
     routes: ["/users", "/data/:id", "/parent/child"],
     middlewares: [, override, override],
+    delays: [2000, 3000, 5000],
   },
   {
     data: path.resolve(__dirname, "../assets/users.json"),
     dataType: "file",
     routes: ["/json"],
-  },
-  {
-    data: path.resolve(__dirname, "../assets/Sunset_Birds.jpg"),
-    dataType: "file",
-    routes: ["/image"],
   },
   {
     data: path.resolve(__dirname, "../assets/article.txt"),
@@ -108,7 +92,7 @@ export const db: Db[] = [
   },
 ];
 
-export const config = {
+export const config: Config = {
   port: 3000,
   middleware: {
     func: () => console.log(new Date()),
@@ -120,7 +104,7 @@ export const config = {
   },
 };
 
-export const globals = {
+export const globals: Globals = {
   value: false,
   sharedResponse: false,
 };
