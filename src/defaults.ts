@@ -74,11 +74,11 @@ export const default_db: Db[] = [
   },
   {
     data: {
-      url: "https://jsonplaceholder.typicode.com/todos",
+      url: "https://jsonplaceholder.typicode.com/posts/1",
       config: {}, // can pass any authorization or other option. Please verify Axios
     },
     dataType: "url",
-    routes: ["/todos"],
+    routes: ["/posts/:id"],
   },
 ];
 

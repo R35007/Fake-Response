@@ -53,6 +53,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(logResponseTime);
 
+// ADD THIS
+var cors = require("cors");
+app.use(cors({ origin: true, credentials: true }));
+
 const fs = require("fs"),
   path = require("path");
 
@@ -75,128 +79,6 @@ const startServer = () => {
     });
   });
 };
-
-const isDuplicateRoute = (route: string, data: any) => {
-  if (availableRoutes.indexOf(route) < 0) {
-    fullDbData[route] = data;
-    return false;
-  } else {
-    console.log();
-    console.log(`Duplicate route : ${route}`);
-    console.log();
-    return true;
-  }
-};
-
-const getMiddlewareValue = (
-  route: string,
-  middleware: Middleware,
-  params: MiddlewareParams
-) => {
-  let common: Middleware | boolean = false;
-  const specific = middleware(params);
-
-  if (config.middleware.excludeRoutes.indexOf(route) < 0) {
-    common = config.middleware.func(params);
-  }
-
-  return { specific, common };
-};
-
-const getDelayTime = (route: string, delay: number) => {
-  let commonDelayTime = 0;
-
-  if (config.delay.excludeRoutes.indexOf(route) < 0) {
-    commonDelayTime = config.delay.time;
-  }
-
-  return typeof delay !== "undefined" && delay >= 0 ? delay : commonDelayTime;
-};
-
-const sendResponse = (
-  data: any,
-  dataType: string,
-  route: string,
-  middleware: Middleware = () => {},
-  delay: number
-) => {
-  app.all(route, (req: express.Request, res: express.Response) => {
-    try {
-      const delayTime = getDelayTime(route, delay);
-      setTimeout(() => {
-        const params: MiddlewareParams = { req, res, data, globals };
-        const middlwares = getMiddlewareValue(route, middleware, params);
-        const response = middlwares.specific || middlwares.common || data;
-        dataType === "file" ? res.sendFile(response) : res.send(response);
-      }, delayTime);
-    } catch (err) {
-      console.log();
-      console.error(err);
-      console.log();
-      res.send(err);
-    }
-  });
-};
-
-const fillArray = (value: Middleware | number, len: number) => {
-  var arr = [];
-  for (var i = 0; i < len; i++) {
-    arr.push(value);
-  }
-  return arr;
-};
-
-async function asyncFunction(db: Db, resolve: Function) {
-  const {
-    data = "",
-    dataType = "default",
-    routes = [],
-    middlewares = [],
-    delays = [],
-  } = db;
-
-  let resp: any = "";
-
-  try {
-    if (dataType.toLowerCase() === "url") {
-      if (typeof data === "string") {
-        resp = await axios.get(data).then((res) => res.data);
-      } else if (typeof data === "object") {
-        const { url = "", config = {} } = <DataUrl>data;
-        resp = await axios.get(url, config).then((res) => res.data);
-      }
-    } else if (
-      dataType.toLowerCase() === "file" ||
-      dataType.toLowerCase() === "default"
-    ) {
-      resp = data;
-    } else {
-      throw Error(
-        "Invalid Data Type. The Data type must be one of these. `default` | `file` || `url `"
-      );
-    }
-
-    const len = routes.length;
-
-    const mdlwar = Array.isArray(middlewares)
-      ? middlewares
-      : fillArray(middlewares, len);
-
-    const dly = Array.isArray(delays) ? delays : fillArray(delays, len);
-
-    routes.map((route: string, i: number) => {
-      if (!isDuplicateRoute(route, resp)) {
-        sendResponse(resp, dataType, route, mdlwar[i], dly[i]);
-      }
-    });
-  } catch (err) {
-    console.log();
-    console.error(err);
-    console.log();
-  } finally {
-    resolve();
-  }
-}
 
 const log = () => {
   console.log();
@@ -256,6 +138,148 @@ const createDefaultAPIS = () => {
 
   return;
 };
+
+const getMiddlewareValue = (
+  route: string,
+  middleware: Middleware,
+  params: MiddlewareParams
+) => {
+  const specific = middleware(params);
+  const common: Middleware | boolean =
+    config.middleware.excludeRoutes.indexOf(route) < 0
+      ? config.middleware.func(params)
+      : false;
+
+  return { specific, common };
+};
+
+const getDelayTime = (route: string, specificDelay: number) => {
+  const commonDelayTime =
+    config.delay.excludeRoutes.indexOf(route) < 0 ? config.delay.time : 0;
+  return typeof specificDelay !== "undefined" && specificDelay >= 0
+    ? specificDelay
+    : commonDelayTime;
+};
+
+const sendResponse = (
+  data: any,
+  dataType: string,
+  route: string,
+  middleware: Middleware = () => {},
+  delay: number
+) => {
+  app.all(route, (req: express.Request, res: express.Response) => {
+    try {
+      const delayTime = getDelayTime(route, delay);
+      setTimeout(() => {
+        const params: MiddlewareParams = { req, res, data, globals };
+        const middlwares = getMiddlewareValue(route, middleware, params);
+        const response = middlwares.specific || middlwares.common || data;
+        dataType === "file" ? res.sendFile(response) : res.send(response);
+      }, delayTime);
+    } catch (err) {
+      console.log();
+      console.error(err);
+      console.log();
+      res.send(err);
+    }
+  });
+};
+
+const setFullDbData = (route: string, data: string, dataType: string) => {
+  let resp = data;
+  if (dataType === "file") {
+    const fileExtension = data.split(".").pop();
+    resp =
+      fileExtension === "json"
+        ? JSON.parse(fs.readFileSync(data, "utf8"))
+        : fileExtension === "txt"
+        ? fs.readFileSync(data, "utf8")
+        : data;
+  }
+  fullDbData[route] = resp;
+};
+
+const isDuplicateRoute = (route: string, data: any) => {
+  if (availableRoutes.indexOf(route) < 0) {
+    return false;
+  }
+  console.log();
+  console.log(`Duplicate route : ${route}`);
+  console.log();
+  return true;
+};
+
+const fillArray = (value: Middleware | number, len: number) => {
+  var arr = [];
+  for (var i = 0; i < len; i++) {
+    arr.push(value);
+  }
+  return arr;
+};
+
+async function asyncFunction(db: Db, resolve: Function) {
+  const {
+    data = "",
+    dataType = "default",
+    routes = [],
+    middlewares = [],
+    delays = [],
+  } = db;
+
+  let resp: any = "";
+
+  try {
+    if (dataType.toLowerCase() === "url") {
+      if (typeof data === "string") {
+        resp = await axios
+          .get(data)
+          .then((res) => res.data)
+          .catch((err) => {
+            throw Error(err.message);
+          });
+      } else if (typeof data === "object") {
+        const { url = "", config = {} } = <DataUrl>data;
+        resp = await axios
+          .get(url, config)
+          .then((res) => res.data)
+          .catch((err) => {
+            throw Error(err.message);
+          });
+      }
+    } else if (
+      dataType.toLowerCase() === "file" ||
+      dataType.toLowerCase() === "default"
+    ) {
+      resp = data;
+    } else {
+      throw Error(
+        "Invalid Data Type. The Data type must be one of these. `default` | `file` | `url `"
+      );
+    }
+
+    const len = routes.length;
+
+    const mdlwar = Array.isArray(middlewares)
+      ? middlewares
+      : fillArray(middlewares, len);
+
+    const dly = Array.isArray(delays) ? delays : fillArray(delays, len);
+
+    routes.map((route: string, i: number) => {
+      if (!isDuplicateRoute(route, resp)) {
+        setFullDbData(route, resp, dataType);
+        sendResponse(resp, dataType, route, mdlwar[i], dly[i]);
+      }
+    });
+  } catch (err) {
+    console.log();
+    console.error(err);
+    console.log();
+  } finally {
+    resolve();
+  }
+}
 
 const init = (userDb: Db[], userConfig: Config, userGlobals: Globals) => {
   console.log();
