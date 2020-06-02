@@ -1,22 +1,26 @@
 #! /usr/bin/env node
-import * as fakeResponse from "./index";
+import { FakeResponse } from "./index";
+import chalk from "chalk";
 
-const [dbPath = "./defaults.js"] = process.argv.slice(2);
+var path = require("path");
+const [dbPath] = process.argv.slice(2);
+
+const parseUrl = (relativeUrl: string) => {
+  return typeof relativeUrl === "string" ? decodeURIComponent(path.resolve(process.cwd(), relativeUrl)) : "./";
+};
+
+let db, config, globals;
 
 try {
-  const { db, config, globals } = require(decodeURIComponent(dbPath));
-  fakeResponse.getResponse(db, config, globals);
+  if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".js") {
+    let data = require(parseUrl(dbPath));
+    db = data.db;
+    config = data.config;
+    globals = data.globals;
+  } else if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".json") {
+    db = parseUrl(dbPath);
+  }
+  new FakeResponse(db, config, globals).launchServer();
 } catch (err) {
-  console.log(err);
+  console.log("\n" + chalk.red(err.message) + "\n");
 }
-
-// fakeResponse
-//   .getResponse(db, config, globals)
-//   .then(({ db, config, fullDbData, globals }) => {
-//     // console.log({ db, config, fullDbData, globals });
-//   });
-
-// const config = fakeResponse.getConfig(); // returns the default config
-// const sampleDb = fakeResponse.getSampleDb(); // returns the sample Db
-// const getGlobals = fakeResponse.getGlobals(); // returns the Global values
-// const isGlobalsCleared = fakeResponse.clearGlobals(); // returns true and clears the Global values

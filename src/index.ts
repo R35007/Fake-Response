@@ -1,20 +1,298 @@
-import express from "express";
-import bodyParser from "body-parser";
 import axios from "axios";
+import bodyParser from "body-parser";
 import chalk from "chalk";
-import {
-  Db,
-  Middleware,
-  MiddlewareParams,
-  DataUrl,
-  Config,
-  Globals,
-} from "./model";
-import { default_db, default_config, default_globals } from "./defaults";
+import cors from "cors";
+import express from "express";
+import { Server } from "http";
+import * as _ from "lodash";
+import { Config, Db, Globals, Middleware, MiddlewareParams, RouteResult, Status, UserDB } from "./model";
+import { Validators } from "./Validators";
 
-let globals: any = { ...default_globals };
-let db: any = [...default_db];
-let config: any = { ...default_config };
+const fs = require("fs"),
+  path = require("path");
+
+export class FakeResponse extends Validators {
+  app: express.Application;
+  server: Server;
+  availableRoutes: string[] = [];
+  fullDbData: object = {};
+  routesResults: RouteResult[] = [];
+
+  private isServerLaunched = false;
+  private isExpressAppCreated = false;
+  private isDataLoaded = false;
+  private isServerStarted = false;
+  private isResourcesLoaded = false;
+  private isDefaultsCreated = false;
+
+  constructor(db?: UserDB, config?: Config, globals?: Globals) {
+    super(db, config, globals);
+  }
+
+  launchServer = async () => {
+    try {
+      if (this.isServerLaunched) return;
+      this.createExpressApp();
+      this.loadData();
+      const server = await this.startServer();
+      const results = await this.loadResources();
+      await this.createDefaultRoutes();
+      console.log("\n" + chalk.gray("watching...") + "\n");
+      this.isServerLaunched = true;
+      return {
+        app: this.app,
+        server,
+        results,
+        db: <Db[]>this.db,
+        config: this.config,
+        globals: this.globals,
+        fullDbData: this.fullDbData,
+      };
+    } catch (err) {
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  createExpressApp = () => {
+    if (this.isExpressAppCreated) return this.app;
+    this.app = express();
+    this.app.use(bodyParser.urlencoded({ extended: true }));
+    this.app.use(bodyParser.json());
+    this.app.use(logResponseTime);
+    this.app.use(errorHandler);
+    this.app.use(cors({ origin: true, credentials: true }));
+    this.isExpressAppCreated = true;
+    return this.app;
+  };
+
+  loadData = (
+    userConfig: Config = this.config,
+    userGlobals: Globals = this.globals,
+    userDb: Db[] | object | string = this.db
+  ) => {
+    if (this.isDataLoaded) {
+      return {
+        db: this.db,
+        config: this.config,
+        globals: this.globals,
+      };
+    }
+    console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
+    console.log("\n" + chalk.gray("Loading Data..."));
+
+    const { valid_config, valid_globals, valid_db } = this.getValidData(userConfig, userGlobals, userDb);
+
+    this.db = valid_db;
+    this.config = valid_config;
+    this.globals = valid_globals;
+
+    console.log(chalk.green.bold("Done."));
+    this.isDataLoaded = true;
+    return {
+      db: valid_db,
+      config: valid_config,
+      globals: valid_globals,
+    };
+  };
+
+  startServer = (port: number = this.config.port): Promise<Server> => {
+    if (this.isServerStarted) return Promise.resolve(this.server);
+    return new Promise((resolve, reject) => {
+      console.log("\n" + chalk.gray("Starting Server..."));
+      this.server = this.app
+        .listen(port, () => {
+          console.log(chalk.green.bold("Fake Response Server Started"));
+          this.isServerStarted = true;
+          resolve(this.server);
+        })
+        .on("error", (err) => {
+          this.isServerStarted = false;
+          reject(err);
+        });
+    });
+  };
+
+  stopServer = (): Promise<Boolean> => {
+    return new Promise((resolve, reject) => {
+      this.server
+        .close(() => {
+          console.log(chalk.gray("\n Fake Response Server Stoped"));
+          resolve(true);
+        })
+        .on("error", (err) => {
+          reject(err);
+        });
+    });
+  };
+
+  // #region Load Resources
+  loadResources = async () => {
+    if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
+    try {
+      console.log("\n" + chalk.gray("Loading Resources...") + "\n");
+      const dbList = <Db[]>this.db;
+      const requests = dbList.map(
+        (data, i) =>
+          new Promise(async (resolve) => {
+            const results = await this.generateRoutes(data, i);
+            resolve(results);
+          })
+      );
+      const results = await Promise.all(requests);
+      console.log("\n" + chalk.green.bold("Done. Resources Loaded."));
+      this.routesResults = <RouteResult[]>_.flatten(results);
+      this.isResourcesLoaded = true;
+      return this.routesResults;
+    } catch (err) {
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  /**
+   * @private This method is used privately inside the class. Please avoid using externally
+   */
+  private generateRoutes = async (db: Db, index: number): Promise<RouteResult[]> => {
+    const { data = "", dataType = "default", routes = [], _d_index = index }: Db = db;
+
+    try {
+      const response =
+        dataType === "url"
+          ? await this.getResponseFromURL(data)
+          : dataType === "file"
+          ? this.getResponseFromFile(data, db)
+          : data;
+
+      const results = (<string[]>routes).reduce((result: RouteResult[], route, i) => {
+        return result.concat(this.generateRoute(route, response, db, i, index));
+      }, []);
+      return results;
+    } catch (err) {
+      console.error(chalk.red(`  http://localhost:${this.config.port} `) + `- ${err.message} @index : ${_d_index}`);
+      return [{ routes, _d_index, _s_index: index, status: "failure", error: err.message }];
+    }
+  };
+
+  /**
+   * @private This method is used privately inside the class. Please avoid using externally
+   */
+  private generateRoute = (route, response, db, _r_index, _s_index): RouteResult => {
+    const { dataType, middlewares, delays, _d_index = _s_index } = db;
+    try {
+      this.createRoute(response, dataType, route, middlewares[_r_index], delays[_r_index]);
+      const status = <Status>"success";
+      return { routes: route, _d_index, _s_index, _r_index, status };
+    } catch (err) {
+      console.log(
+        chalk.red(`  http://localhost:${this.config.port}${route} `) +
+          `- ${err.message} @index : ${_d_index}:${_r_index}`
+      );
+      const status = <Status>"failure";
+      return { routes: route, _d_index, _s_index, _r_index, status, error: err.message };
+    }
+  };
+
+  /**
+   * @private This method is used privately inside the class. Please avoid using externally
+   */
+  private getResponseFromURL = async (data) => {
+    if (_.isString(data) && this.isValidURL(data)) {
+      return await axios.get(data).then((res) => res.data);
+    } else if (_.isPlainObject(data) && _.isString(data.url) && this.isValidURL(data.url)) {
+      const { url, config = {} } = data;
+      return await axios.get(url, config).then((res) => res.data);
+    } else {
+      throw new Error("Invalid URL. Please provide a valid URL");
+    }
+  };
+
+  /**
+   * @private This method is used privately inside the class. Please avoid using externally
+   */
+  private getResponseFromFile = (data, db) => {
+    const parsedUrl = this.parseUrl(data);
+    if (!_.isObject(data) && _.isString(data) && fs.existsSync(parsedUrl)) {
+      const fileExtension = path.extname(parsedUrl);
+      if (fileExtension === ".json" || fileExtension === ".txt") {
+        db.dataType = "default";
+      }
+      return fileExtension === ".json"
+        ? JSON.parse(fs.readFileSync(parsedUrl, "utf8"))
+        : fileExtension === ".txt"
+        ? fs.readFileSync(parsedUrl, "utf8")
+        : parsedUrl;
+    }
+
+    throw new Error("Invalid Path. Please provide a valid path.");
+  };
+  // #endregion Load Resources
+
+  createRoute = (
+    data: any,
+    dataType: string,
+    route: string,
+    middleware: Middleware = this.emptyMiddleware,
+    delay?: number
+  ) => {
+    this.checkRoute(dataType, route, middleware, delay); // throws Error if any of the data is invalid.
+    this.fullDbData[route] = data;
+    const delayTime = getDelayTime(route, delay, this.config.delay);
+    this.app.all(route, [
+      specificMiddleware(data, middleware, this.globals, delayTime),
+      commonMiddleware(data, this.config.middleware, this.globals, delayTime),
+      defaultMiddleware(data, dataType),
+    ]);
+    console.log("  http://localhost:" + this.config.port + route);
+  };
+
+  private checkRoute(dataType, route, middleware, delay) {
+    if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
+    if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, this.availableRoutes))
+      throw new Error("Please provide a valid route");
+    if (!_.isFunction(middleware)) throw new Error("Please provide a valid middleware");
+    if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
+  }
+
+  createDefaultRoutes = () => {
+    if (this.isDefaultsCreated) return;
+    const HOME = "/",
+      DB = "/db",
+      ROUTESLIST = "/routesList";
+    const defaultRoutes = [];
+
+    if (this.availableRoutes.indexOf(HOME) < 0) {
+      defaultRoutes.push(HOME);
+      this.app.use(express.static(path.join(__dirname, "../public")));
+    }
+    if (this.availableRoutes.indexOf(DB) < 0) {
+      defaultRoutes.push(DB);
+      this.app.all(DB, (req, res) => {
+        res.send(this.fullDbData);
+      });
+    }
+    if (this.availableRoutes.indexOf(ROUTESLIST) < 0) {
+      defaultRoutes.push(ROUTESLIST);
+      this.app.all(ROUTESLIST, (req, res) => {
+        res.send(this.availableRoutes);
+      });
+    }
+    defaultRoutesLog(defaultRoutes, this.config.port);
+    this.isDefaultsCreated = true;
+  };
+}
+
+// #region Default Common Middlewares
+const logResponseTime = (req, res, next) => {
+  const startHrTime = process.hrtime();
+
+  res.on("finish", () => {
+    const elapsedHrTime = process.hrtime(startHrTime);
+    const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
+    if (["/style.css", "/script.js", "/favicon.ico"].indexOf(req.path) < 0)
+      console.log(`${req.method} ${req.path} ` + getStatusCodeColor(res.statusCode) + ` ${elapsedTimeInMs} ms`);
+  });
+
+  next();
+};
 
 const getStatusCodeColor = (statusCode: number) => {
   if (statusCode === 200) {
@@ -28,306 +306,90 @@ const getStatusCodeColor = (statusCode: number) => {
   }
 };
 
-const logResponseTime = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) => {
-  const startHrTime = process.hrtime();
+const errorHandler = (err, req, res, next) => {
+  if (!err) return next();
+  console.log(chalk.red("! Error.Something went wrong"));
+};
+//#endregion
 
-  res.on("finish", () => {
-    const elapsedHrTime = process.hrtime(startHrTime);
-    const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
-    console.log(
-      `${req.method} ${req.path} ` +
-        getStatusCodeColor(res.statusCode) +
-        ` ${elapsedTimeInMs} ms`
-    );
-  });
-
-  next();
+//#region User Middlewares
+const specificMiddleware = (data: any, middleware: Middleware, globals: Globals, delay: number) => {
+  return (req, res, next) => {
+    const params: MiddlewareParams = { req, res, next, data, globals };
+    setTimeout(() => {
+      try {
+        middleware(params);
+      } catch (err) {
+        console.error("\n" + chalk.red(err.message));
+        res.send(err);
+      }
+    }, delay);
+  };
 };
 
-const app: express.Application = express();
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-app.use(logResponseTime);
-
-// ADD THIS
-var cors = require("cors");
-app.use(cors({ origin: true, credentials: true }));
-
-const fs = require("fs"),
-  path = require("path");
-
-const availableRoutes: string[] = [];
-const defaultRoutes: string[] = [];
-const fullDbData: object = {};
-
-export const getConfig = (): Config => config;
-
-export const getDb = (): Db[] => db;
-
-export const getGlobals = (): Globals => globals;
-
-const startServer = () => {
-  return new Promise((resolve) => {
-    app.listen(config.port, () => {
-      console.log(`Server listening at http://localhost:${config.port}`);
-      console.log();
-      resolve();
-    });
-  });
-};
-
-const log = () => {
-  console.log();
-  console.log(chalk.green.bold("Done. Fake Response Server Started..."));
-  console.log();
-  console.log(chalk.white.bold("Resources : "));
-  console.log();
-  app._router.stack.map((r) => {
-    if (r.route && r.route.path && defaultRoutes.indexOf(r.route.path) < 0) {
-      console.log("  http://localhost:" + config.port + r.route.path);
-    }
-  });
-  if (defaultRoutes.length > 0) {
-    console.log();
-    console.log(chalk.white.bold("Default Routes : "));
-  }
-  console.log();
-  defaultRoutes.map((route) => {
-    const name = route === "/" ? "HOME" : route.replace("/", "").toUpperCase();
-    console.log(chalk.white.bold(name));
-    console.log("  http://localhost:" + config.port + route);
-    console.log();
-  });
-
-  return;
-};
-
-const createDefaultAPIS = () => {
-  const HOME = "/",
-    DB = "/db",
-    ROUTESLIST = "/routesList",
-    FAVICON = "/favicon.ico";
-  if (availableRoutes.indexOf(HOME) < 0) {
-    defaultRoutes.push(HOME);
-    app.all(HOME, (req, res) => {
-      res.sendFile(path.join(__dirname, "../assets", "index.html"));
-    });
-  }
-  if (availableRoutes.indexOf(DB) < 0) {
-    defaultRoutes.push(DB);
-    app.all(DB, (req, res) => {
-      res.send(fullDbData);
-    });
-  }
-  if (availableRoutes.indexOf(ROUTESLIST) < 0) {
-    defaultRoutes.push(ROUTESLIST);
-    app.all(ROUTESLIST, (req, res) => {
-      res.send(Object.keys(fullDbData));
-    });
-  }
-  if (availableRoutes.indexOf(FAVICON) < 0) {
-    defaultRoutes.push(FAVICON);
-    app.all(FAVICON, (req, res) => {
-      res.sendFile(path.join(__dirname, "../assets/favicon.ico"));
-    });
-  }
-
-  return;
-};
-
-const getMiddlewareValue = (
-  route: string,
-  middleware: Middleware,
-  params: MiddlewareParams
-) => {
-  const specific = middleware(params);
-  const common: Middleware | boolean =
-    config.middleware.excludeRoutes.indexOf(route) < 0
-      ? config.middleware.func(params)
-      : false;
-
-  return { specific, common };
-};
-
-const getDelayTime = (route: string, specificDelay: number) => {
-  const commonDelayTime =
-    config.delay.excludeRoutes.indexOf(route) < 0 ? config.delay.time : 0;
-  return typeof specificDelay !== "undefined" && specificDelay >= 0
-    ? specificDelay
-    : commonDelayTime;
-};
-
-const sendResponse = (
-  data: any,
-  dataType: string,
-  route: string,
-  middleware: Middleware = () => {},
-  delay: number
-) => {
-  app.all(route, (req: express.Request, res: express.Response) => {
-    try {
-      const delayTime = getDelayTime(route, delay);
+const commonMiddleware = (data: any, middleware, globals: Globals, delay: number) => {
+  return (req, res, next) => {
+    if (middleware.excludeRoutes.indexOf(req.path) < 0) {
+      const params: MiddlewareParams = { req, res, next, data, globals };
       setTimeout(() => {
-        const params: MiddlewareParams = { req, res, data, globals };
-        const middlwares = getMiddlewareValue(route, middleware, params);
-        const response = middlwares.specific || middlwares.common || data;
-        dataType === "file" ? res.sendFile(response) : res.send(response);
-      }, delayTime);
+        try {
+          middleware.func(params);
+        } catch (err) {
+          console.error("\n" + chalk.red(err.message));
+          res.send(err);
+        }
+      }, delay);
+    } else {
+      next();
+    }
+  };
+};
+
+const defaultMiddleware = (data: any, dataType: string) => {
+  return (req, res, next) => {
+    try {
+      if (!res.headersSent) {
+        dataType === "file" ? res.sendFile(this.parseUrl(data)) : res.send(data);
+      }
     } catch (err) {
-      console.log();
-      console.error(err);
-      console.log();
+      console.error("\n" + chalk.red(err.message));
       res.send(err);
     }
-  });
+  };
+};
+//#endregion
+
+const getDelayTime = (route, specificDelay, commonDelay) => {
+  const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : 0;
+  return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime.time;
 };
 
-const setFullDbData = (route: string, data: string, dataType: string) => {
-  let resp = data;
-  if (dataType === "file") {
-    const fileExtension = data.split(".").pop();
-    resp =
-      fileExtension === "json"
-        ? JSON.parse(fs.readFileSync(data, "utf8"))
-        : fileExtension === "txt"
-        ? fs.readFileSync(data, "utf8")
-        : data;
-  }
-  fullDbData[route] = resp;
-};
-
-const isDuplicateRoute = (route: string, data: any) => {
+const isDuplicateRoute = (route, availableRoutes) => {
   if (availableRoutes.indexOf(route) < 0) {
+    availableRoutes.push(route);
     return false;
   }
-  console.log();
-  console.log(`Duplicate route : ${route}`);
-  console.log();
-  return true;
+  throw new Error("Duplicate Route");
 };
 
-const fillArray = (value: Middleware | number, len: number) => {
-  var arr = [];
-  for (var i = 0; i < len; i++) {
-    arr.push(value);
+const defaultRoutesLog = (defaultRoutes, port) => {
+  if (defaultRoutes.length > 0) {
+    console.log("\n" + chalk.white.bold("Default Routes : ") + "\n");
   }
-  return arr;
-};
-
-async function asyncFunction(db: Db, resolve: Function) {
-  const {
-    data = "",
-    dataType = "default",
-    routes = [],
-    middlewares = [],
-    delays = [],
-  } = db;
-
-  let resp: any = "";
-
-  try {
-    if (dataType.toLowerCase() === "url") {
-      if (typeof data === "string") {
-        resp = await axios
-          .get(data)
-          .then((res) => res.data)
-          .catch((err) => {
-            throw Error(err.message);
-          });
-      } else if (typeof data === "object") {
-        const { url = "", config = {} } = <DataUrl>data;
-        resp = await axios
-          .get(url, config)
-          .then((res) => res.data)
-          .catch((err) => {
-            throw Error(err.message);
-          });
-      }
-    } else if (
-      dataType.toLowerCase() === "file" ||
-      dataType.toLowerCase() === "default"
-    ) {
-      resp = data;
-    } else {
-      throw Error(
-        "Invalid Data Type. The Data type must be one of these. `default` | `file` | `url `"
-      );
-    }
-
-    const len = routes.length;
-
-    const mdlwar = Array.isArray(middlewares)
-      ? middlewares
-      : fillArray(middlewares, len);
-
-    const dly = Array.isArray(delays) ? delays : fillArray(delays, len);
-
-    routes.map((route: string, i: number) => {
-      if (!isDuplicateRoute(route, resp)) {
-        setFullDbData(route, resp, dataType);
-        sendResponse(resp, dataType, route, mdlwar[i], dly[i]);
-      }
-    });
-  } catch (err) {
-    console.log();
-    console.error(err);
-    console.log();
-  } finally {
-    resolve();
-  }
-}
-
-const init = (userDb: Db[], userConfig: Config, userGlobals: Globals) => {
-  console.log();
-  console.log(chalk.blue("/{^_^}/ hi!"));
-  console.log();
-  console.log(chalk.gray("Loading Db"));
-  if (!userDb) {
-    console.log();
-    console.log(chalk.yellow("Oops, Db not found. Using sample DB"));
-  }
-  if (!userConfig) {
-    console.log(chalk.yellow("Oops, Config not found. Using default Config"));
-  }
-  if (!userGlobals) {
-    console.log(chalk.yellow("Oops, Globals not found. Using default Globals"));
-  }
-
-  db = userDb || db;
-  config = { ...config, ...userConfig };
-  globals = { ...globals, ...userGlobals };
-};
-
-export const getResponse = (
-  userDb?: Db[],
-  userConfig?: Config,
-  userGlobals?: Globals
-) => {
-  return new Promise((resolve, reject) => {
-    try {
-      init(userDb, userConfig, userGlobals);
-
-      let requests = db.map(
-        (data: Db) =>
-          new Promise((_resolve) => {
-            asyncFunction(data, _resolve);
-          })
-      );
-
-      Promise.all(requests)
-        .then(() => createDefaultAPIS())
-        .then(() => log())
-        .then(() => startServer())
-        .then(() => resolve({ db, config, fullDbData, globals }));
-    } catch (err) {
-      console.log();
-      console.error(err);
-      console.log();
-      reject(err);
-    }
+  defaultRoutes.map((route) => {
+    const name = route === "/" ? "HOME" : route.replace("/", "").toUpperCase();
+    console.log(chalk.white.bold(name) + "  :  http://localhost:" + port + route);
   });
+};
+
+/**
+ * @deprecated Since version 2.1.1. has be deleted in version 3.0. Use fakeResponse = new FakeResponse().launchServer(); instead.
+ */
+export const getResponse = (db?: Db[], config?: Config, globals?: Globals) => {
+  console.warn("\n" + chalk.red("! Calling deprecated function !") + "\n");
+  console.warn(chalk.red("This funnction has been decreated since version 2.1.1."));
+  console.warn(chalk.red("Please use use the below code \n"));
+  console.log(chalk.gray('import { FakeResponse } from "fake-response"'));
+  console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals)"));
+  console.log(chalk.gray("const fakeResponse.launchServer();"));
 };
