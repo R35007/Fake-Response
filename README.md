@@ -117,7 +117,7 @@ const config: Config = {
   middleware: {
     func: ({next}) => {
       console.log("Do Something here");
-      next(); // if you dont send any response here, always call `next` method to get the response.
+      next(); // if you don't send any response here, always call `next` method to get the response.
     },
     excludeRoutes: ["/excludedRoute"],
   },
@@ -243,7 +243,7 @@ const db = [
 
 Mock DB provides you to access any file in the api.
 All you have is to provide the `data` property with **absolute path** of the file and set `dataType` value to `file`.
-Note: If you provide a relative path then that path will be relative to the config rooth path.
+Note: If you provide a relative path then that path will be relative to the config root path.
 For Example:
 
 ```js
@@ -470,7 +470,7 @@ The routes and port can be overridden in the `db.js` configs
 
 **`fakeResponse.getResponse([params])`**
 
-This method has been deprecated since varsion 2.2.1. Please use the below code.
+This method has been deprecated since version 2.2.1. Please use the below code.
 
 ```js
 const { FakeResponse } = require("fake-response");
@@ -523,11 +523,11 @@ Returns the valid structure of the db, config, globals.
 
 **`fakeResponse.startServer()`**
 
-Returns a Promise of `Server`. - helps to start the app server externaly
+Returns a Promise of `Server`. - helps to start the app server externally
 
 **`fakeResponse.stopServer()`**
 
-Returns a Promise of Boolean. - helps to stop the app server externaly
+Returns a Promise of Boolean. - helps to stop the app server externally
 
 **`fakeResponse.loadResources()`**
 
@@ -535,7 +535,7 @@ Returns a Promise of Routes results - the success and failure status of the gene
 
 **`fakeResponse.createRoute([params])`**
 
-Creats a new route with specific middleware or delay
+Create a new route with specific middleware or delay
 
 #### Params
 
@@ -549,7 +549,7 @@ Creats a new route with specific middleware or delay
 
 **`fakeResponse.createDefaultRoutes()`**
 
-Creats a default home, db, routes list api
+Create a default home, db, routes list api
 
 ## Author
 

@@ -121,9 +121,11 @@ export class Validators {
           const routes = key.split(",").map(this.getValidRoute);
           const middlewares = routes.map((r) => u.getInjector(r, valid_injectors, "middleware"));
           const delays = routes.map((r) => u.getInjector(r, valid_injectors, "delay"));
+          const dataType = "default";
           const db: Db = {
             _d_index: i,
             data,
+            dataType,
             routes,
             middlewares: middlewares.filter(Boolean).length > 0 ? middlewares : [],
             delays: delays.filter(Boolean).length > 0 ? delays : [],
@@ -131,7 +133,7 @@ export class Validators {
           return db;
         });
         const sorted_db = _.sortBy(transformed_db, ["dataType"]);
-        console.log(chalk.green.bold("  Done."));
+        console.log(chalk.gray("  Done."));
         this.db = sorted_db;
         return sorted_db;
       }

@@ -86,7 +86,7 @@ export class FakeResponse extends Validators {
     this.config = valid_config;
     this.globals = valid_globals;
 
-    console.log(chalk.green.bold("Done."));
+    console.log(chalk.gray("Done."));
     this.isDataLoaded = true;
     return {
       db: valid_db,
@@ -116,7 +116,7 @@ export class FakeResponse extends Validators {
     return new Promise((resolve, reject) => {
       this.server
         .close(() => {
-          console.log(chalk.gray("\n Fake Response Server Stoped"));
+          console.log(chalk.gray("\n Fake Response Server Stopped"));
           resolve(true);
         })
         .on("error", (err) => {
@@ -128,6 +128,9 @@ export class FakeResponse extends Validators {
   // #region Load Resources
   loadResources = async () => {
     if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
+    if (!this.isDataLoaded) {
+      this.loadData();
+    }
     try {
       console.log("\n" + chalk.gray("Loading Resources...") + "\n");
       const dbList = <Db[]>this.db;
@@ -139,7 +142,7 @@ export class FakeResponse extends Validators {
           })
       );
       const results = await Promise.all(requests);
-      console.log("\n" + chalk.green.bold("Done. Resources Loaded."));
+      console.log("\n" + chalk.gray("Done. Resources Loaded."));
       this.routesResults = <RouteResult[]>_.flatten(results);
       this.isResourcesLoaded = true;
       return this.routesResults;
@@ -387,7 +390,7 @@ const defaultRoutesLog = (defaultRoutes, port) => {
  */
 export const getResponse = (db?: Db[], config?: Config, globals?: Globals) => {
   console.warn("\n" + chalk.red("! Calling deprecated function !") + "\n");
-  console.warn(chalk.red("This funnction has been decreated since version 2.1.1."));
+  console.warn(chalk.red("This function has been deprecated since version 2.1.1."));
   console.warn(chalk.red("Please use use the below code \n"));
   console.log(chalk.gray('import { FakeResponse } from "fake-response"'));
   console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals)"));
