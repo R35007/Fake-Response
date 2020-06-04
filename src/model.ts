@@ -1,4 +1,5 @@
 import express from "express";
+import { Middlewares } from "./middlewares";
 
 export type UserDB = string | Object | Db[];
 
@@ -18,7 +19,7 @@ export interface DataUrl {
 
 export type DataType = "default" | "file" | "url";
 
-export type Middleware = (param: MiddlewareParams) => any;
+export type Middleware = (params: MiddlewareParams) => any;
 
 export interface Config {
   port?: number;
@@ -47,6 +48,29 @@ export interface MiddlewareParams {
   next: express.NextFunction;
   data: any;
   globals: Globals;
+  locals: Locals;
+}
+
+export interface Locals {
+  data: any;
+  dataType: string;
+  specificMiddleware: Middlewares;
+  commonMiddleware: Middlewares;
+  delay: number;
+  fileType: FileType;
+  urlType: URLType;
+}
+
+export interface FileType {
+  url: string;
+  data?: any;
+  extension?: string;
+}
+export interface URLType {
+  url: string;
+  params?: object;
+  data?: any;
+  headers?: object;
 }
 
 export interface Injectors {

@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-import { FakeResponse } from "./index";
+import { FakeResponse } from "./";
 import chalk from "chalk";
 
 var path = require("path");
@@ -13,12 +13,17 @@ let db, config, globals;
 
 try {
   if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".js") {
-    let data = require(parseUrl(dbPath));
+    const data = require(parseUrl(dbPath));
     db = data.db;
     config = data.config;
     globals = data.globals;
   } else if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".json") {
     db = parseUrl(dbPath);
+  } else {
+    const data = require("./samples");
+    db = data.db;
+    config = data.config;
+    globals = data.globals;
   }
   new FakeResponse(db, config, globals).launchServer();
 } catch (err) {

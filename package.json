@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "3.0.1",
+  "version": "3.2.0",
   "description": "customize your own dynamic mock REST API",
   "main": "dist/index.js",
   "scripts": {
@@ -45,12 +45,12 @@
   },
   "license": "ISC",
   "dependencies": {
-    "lodash": "^4.14.154",
     "axios": "^0.19.2",
     "body-parser": "^1.19.0",
     "chalk": "^4.0.0",
     "cors": "^2.8.5",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "lodash": "^4.14.154"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.154",

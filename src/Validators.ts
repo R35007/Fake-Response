@@ -1,17 +1,32 @@
 import chalk from "chalk";
 import * as _ from "lodash";
-import { default_config, default_db, default_globals } from "./defaults";
+import { sample_db } from "./samples";
 import { Config, DataType, Db, Globals, Injectors, UserDB } from "./model";
-import * as u from "./utils";
+import { Utils } from "./utils";
 
 const fs = require("fs");
 const path = require("path");
 
-export class Validators {
-  constructor(protected db?: UserDB, protected config?: Config, public globals?: Globals) {
-    this.config = config;
-    this.globals = globals;
-    this.db = db;
+const default_config: Config = {
+  port: 3000,
+  rootPath: "./",
+  middleware: {
+    func: ({ next }) => {
+      next();
+    },
+    excludeRoutes: [],
+  },
+  delay: {
+    time: 0,
+    excludeRoutes: [],
+  },
+};
+
+const default_globals: Globals = {};
+
+export class Validators extends Utils {
+  constructor(db?: UserDB, config?: Config, globals?: Globals) {
+    super(db, config, globals);
   }
 
   getValidData = (config: Config = this.config, globals = this.globals, db = this.db) => {
@@ -21,14 +36,6 @@ export class Validators {
       valid_db: this.getValidDb(db),
     };
   };
-
-  parseUrl = (relativeUrl: string) => {
-    const roothPath = _.get(this, "config.rootPath", default_config.rootPath);
-    return decodeURIComponent(path.resolve(roothPath, _.toString(relativeUrl)));
-  };
-
-  isDirectoryExist = (value) =>
-    _.isString(value) && fs.existsSync(this.parseUrl(value)) && fs.statSync(this.parseUrl(value)).isDirectory();
 
   getValidConfig = (config: Config = this.config) => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
@@ -42,8 +49,8 @@ export class Validators {
 
     valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port) : port;
     valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
-    valid_Config.middleware = u.getConfigMiddleware(config.middleware, middleware);
-    valid_Config.delay = u.getConfigDelay(config.delay, delay);
+    valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
+    valid_Config.delay = this.getConfigDelay(config.delay, delay);
 
     this.config = valid_Config;
     return valid_Config;
@@ -56,14 +63,14 @@ export class Validators {
       return default_globals;
     }
 
-    this.globals = globals;
-    return globals;
+    this.globals = { ...default_globals, ...globals };
+    return { ...default_globals, ...globals };
   };
 
   getValidDb = (db: UserDB = this.db): Db[] => {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
       console.log(chalk.yellow("  Oops, Db not found. Using sample DB"));
-      db = default_db;
+      db = sample_db;
     }
 
     if (_.isString(db) || _.isPlainObject(db)) {
@@ -79,11 +86,11 @@ export class Validators {
       if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
       const valid_obj: Db = <Db>{};
       valid_obj._d_index = i;
-      valid_obj.dataType = <DataType>u.getDataType(obj.dataType);
+      valid_obj.dataType = <DataType>this.getDataType(obj.dataType);
       valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>obj.data || "") : obj.data || "";
       valid_obj.routes = this.getValidRoutes(obj.routes);
-      valid_obj.middlewares = u.getMiddlewares(obj.middlewares, valid_obj.routes.length);
-      valid_obj.delays = u.getDelays(obj.delays, valid_obj.routes.length);
+      valid_obj.middlewares = this.getMiddlewares(obj.middlewares, valid_obj.routes.length);
+      valid_obj.delays = this.getDelays(obj.delays, valid_obj.routes.length);
       return valid_obj;
     });
 
@@ -98,8 +105,8 @@ export class Validators {
       if (!_.isPlainObject(injector)) throw new TypeError(`not an object type. @index : ${i}`);
       const valid_injector: Injectors = <Injectors>{};
       valid_injector.routes = this.getValidRoutes(injector.routes);
-      valid_injector.middleware = u.getMiddlewares(injector.middleware, 1)[0];
-      valid_injector.delay = u.getDelays(injector.delay, 1)[0];
+      valid_injector.middleware = this.getMiddlewares(injector.middleware, 1)[0];
+      valid_injector.delay = this.getDelays(injector.delay, 1)[0];
       return valid_injector;
     });
     return valid_injectors;
@@ -112,15 +119,19 @@ export class Validators {
 
       const valid_injectors = this.getValidInjector(injectors);
 
-      if (_.isString(data) && fs.existsSync(this.parseUrl(data)) && path.extname(this.parseUrl(data)) === ".json") {
-        valid_data = JSON.parse(fs.readFileSync(this.parseUrl(data), "utf8"));
+      if (_.isString(data)) {
+        if (fs.existsSync(this.parseUrl(data)) && path.extname(this.parseUrl(data)) === ".json") {
+          valid_data = JSON.parse(fs.readFileSync(this.parseUrl(data), "utf8"));
+        } else {
+          throw new Error(this.parseUrl(data) + " - Invalid path or json. Please provide a valid path or json.");
+        }
       }
 
       if (_.isPlainObject(valid_data)) {
         const transformed_db = Object.entries(valid_data).map(([key, data], i, arr) => {
           const routes = key.split(",").map(this.getValidRoute);
-          const middlewares = routes.map((r) => u.getInjector(r, valid_injectors, "middleware"));
-          const delays = routes.map((r) => u.getInjector(r, valid_injectors, "delay"));
+          const middlewares = routes.map((r) => this.getInjector(r, valid_injectors, "middleware"));
+          const delays = routes.map((r) => this.getInjector(r, valid_injectors, "delay"));
           const dataType = "default";
           const db: Db = {
             _d_index: i,
@@ -138,7 +149,7 @@ export class Validators {
         return sorted_db;
       }
 
-      throw new Error("Invalid path or json. Please provide a valid path or json.");
+      throw new Error("Invalid json. Please provide a valid json.");
     } catch (err) {
       throw new Error(err.message);
     }
@@ -165,13 +176,17 @@ export class Validators {
     return [];
   };
 
-  getValidRoute = (route) => {
-    if (_.isObject(route)) return undefined;
-    const validRoute = `${route}`.startsWith("/") ? `${route}` : "/" + route;
-    return validRoute;
-  };
-
   emptyMiddleware = ({ next }) => {
     next();
+  };
+
+  parseUrl = (relativeUrl: string) => {
+    const roothPath = _.get(this, "config.rootPath", default_config.rootPath);
+    const parsedUrl = decodeURIComponent(path.resolve(roothPath, _.toString(relativeUrl)));
+    return parsedUrl;
+  };
+
+  isDirectoryExist = (value) => {
+    return _.isString(value) && fs.existsSync(this.parseUrl(value)) && fs.statSync(this.parseUrl(value)).isDirectory();
   };
 }

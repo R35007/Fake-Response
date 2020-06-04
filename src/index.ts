@@ -1,17 +1,16 @@
-import axios from "axios";
 import bodyParser from "body-parser";
 import chalk from "chalk";
 import cors from "cors";
 import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
-import { Config, Db, Globals, Middleware, MiddlewareParams, RouteResult, Status, UserDB } from "./model";
-import { Validators } from "./Validators";
+import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB } from "./model";
+import { Middlewares } from "./middlewares";
 
 const fs = require("fs"),
   path = require("path");
 
-export class FakeResponse extends Validators {
+export class FakeResponse extends Middlewares {
   app: express.Application;
   server: Server;
   availableRoutes: string[] = [];
@@ -58,9 +57,10 @@ export class FakeResponse extends Validators {
     this.app = express();
     this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(bodyParser.json());
-    this.app.use(logResponseTime);
-    this.app.use(errorHandler);
+    this.app.use(this.logResponseTime);
+    this.app.use(this.errorHandler);
     this.app.use(cors({ origin: true, credentials: true }));
+    this.app.set("json spaces", 2);
     this.isExpressAppCreated = true;
     return this.app;
   };
@@ -151,22 +151,11 @@ export class FakeResponse extends Validators {
     }
   };
 
-  /**
-   * @private This method is used privately inside the class. Please avoid using externally
-   */
   private generateRoutes = async (db: Db, index: number): Promise<RouteResult[]> => {
     const { data = "", dataType = "default", routes = [], _d_index = index }: Db = db;
-
     try {
-      const response =
-        dataType === "url"
-          ? await this.getResponseFromURL(data)
-          : dataType === "file"
-          ? this.getResponseFromFile(data, db)
-          : data;
-
       const results = (<string[]>routes).reduce((result: RouteResult[], route, i) => {
-        return result.concat(this.generateRoute(route, response, db, i, index));
+        return result.concat(this.generateRoute(route, data, db, i, index));
       }, []);
       return results;
     } catch (err) {
@@ -175,13 +164,10 @@ export class FakeResponse extends Validators {
     }
   };
 
-  /**
-   * @private This method is used privately inside the class. Please avoid using externally
-   */
   private generateRoute = (route, response, db, _r_index, _s_index): RouteResult => {
     const { dataType, middlewares, delays, _d_index = _s_index } = db;
     try {
-      this.createRoute(response, dataType, route, middlewares[_r_index], delays[_r_index]);
+      this.createRoute(response, route, dataType, middlewares[_r_index], delays[_r_index]);
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
@@ -194,66 +180,19 @@ export class FakeResponse extends Validators {
     }
   };
 
-  /**
-   * @private This method is used privately inside the class. Please avoid using externally
-   */
-  private getResponseFromURL = async (data) => {
-    if (_.isString(data) && this.isValidURL(data)) {
-      return await axios.get(data).then((res) => res.data);
-    } else if (_.isPlainObject(data) && _.isString(data.url) && this.isValidURL(data.url)) {
-      const { url, config = {} } = data;
-      return await axios.get(url, config).then((res) => res.data);
-    } else {
-      throw new Error("Invalid URL. Please provide a valid URL");
-    }
-  };
-
-  /**
-   * @private This method is used privately inside the class. Please avoid using externally
-   */
-  private getResponseFromFile = (data, db) => {
-    const parsedUrl = this.parseUrl(data);
-    if (!_.isObject(data) && _.isString(data) && fs.existsSync(parsedUrl)) {
-      const fileExtension = path.extname(parsedUrl);
-      if (fileExtension === ".json" || fileExtension === ".txt") {
-        db.dataType = "default";
-      }
-      return fileExtension === ".json"
-        ? JSON.parse(fs.readFileSync(parsedUrl, "utf8"))
-        : fileExtension === ".txt"
-        ? fs.readFileSync(parsedUrl, "utf8")
-        : parsedUrl;
-    }
-
-    throw new Error("Invalid Path. Please provide a valid path.");
-  };
-  // #endregion Load Resources
-
-  createRoute = (
-    data: any,
-    dataType: string,
-    route: string,
-    middleware: Middleware = this.emptyMiddleware,
-    delay?: number
-  ) => {
-    this.checkRoute(dataType, route, middleware, delay); // throws Error if any of the data is invalid.
+  createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
+    checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
     this.fullDbData[route] = data;
     const delayTime = getDelayTime(route, delay, this.config.delay);
     this.app.all(route, [
-      specificMiddleware(data, middleware, this.globals, delayTime),
-      commonMiddleware(data, this.config.middleware, this.globals, delayTime),
-      defaultMiddleware(data, dataType),
+      this.initialMiddlewareWrapper(data, dataType, middleware, this.config.middleware, delayTime),
+      this.specificMiddlewareWrapper(this.globals),
+      this.commonMiddlewareWrapper(this.globals),
+      this.defaultMiddleware,
     ]);
     console.log("  http://localhost:" + this.config.port + route);
   };
-
-  private checkRoute(dataType, route, middleware, delay) {
-    if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
-    if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, this.availableRoutes))
-      throw new Error("Please provide a valid route");
-    if (!_.isFunction(middleware)) throw new Error("Please provide a valid middleware");
-    if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
-  }
+  // #endregion Load Resources
 
   createDefaultRoutes = () => {
     if (this.isDefaultsCreated) return;
@@ -283,88 +222,17 @@ export class FakeResponse extends Validators {
   };
 }
 
-// #region Default Common Middlewares
-const logResponseTime = (req, res, next) => {
-  const startHrTime = process.hrtime();
-
-  res.on("finish", () => {
-    const elapsedHrTime = process.hrtime(startHrTime);
-    const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
-    if (["/style.css", "/script.js", "/favicon.ico"].indexOf(req.path) < 0)
-      console.log(`${req.method} ${req.path} ` + getStatusCodeColor(res.statusCode) + ` ${elapsedTimeInMs} ms`);
-  });
-
-  next();
-};
-
-const getStatusCodeColor = (statusCode: number) => {
-  if (statusCode === 200) {
-    return chalk.green(statusCode);
-  } else if (statusCode >= 300 && statusCode < 400) {
-    return chalk.blue(statusCode);
-  } else if (statusCode >= 400 && statusCode < 500) {
-    return chalk.red(statusCode);
-  } else {
-    return chalk.yellow(statusCode);
-  }
-};
-
-const errorHandler = (err, req, res, next) => {
-  if (!err) return next();
-  console.log(chalk.red("! Error.Something went wrong"));
-};
-//#endregion
-
-//#region User Middlewares
-const specificMiddleware = (data: any, middleware: Middleware, globals: Globals, delay: number) => {
-  return (req, res, next) => {
-    const params: MiddlewareParams = { req, res, next, data, globals };
-    setTimeout(() => {
-      try {
-        middleware(params);
-      } catch (err) {
-        console.error("\n" + chalk.red(err.message));
-        res.send(err);
-      }
-    }, delay);
-  };
-};
-
-const commonMiddleware = (data: any, middleware, globals: Globals, delay: number) => {
-  return (req, res, next) => {
-    if (middleware.excludeRoutes.indexOf(req.path) < 0) {
-      const params: MiddlewareParams = { req, res, next, data, globals };
-      setTimeout(() => {
-        try {
-          middleware.func(params);
-        } catch (err) {
-          console.error("\n" + chalk.red(err.message));
-          res.send(err);
-        }
-      }, delay);
-    } else {
-      next();
-    }
-  };
-};
-
-const defaultMiddleware = (data: any, dataType: string) => {
-  return (req, res, next) => {
-    try {
-      if (!res.headersSent) {
-        dataType === "file" ? res.sendFile(this.parseUrl(data)) : res.send(data);
-      }
-    } catch (err) {
-      console.error("\n" + chalk.red(err.message));
-      res.send(err);
-    }
-  };
-};
-//#endregion
-
+// #region Utils
 const getDelayTime = (route, specificDelay, commonDelay) => {
   const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : 0;
-  return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime.time;
+  return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime;
+};
+
+const checkRoute = (dataType, route, delay, availableRoutes) => {
+  if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
+  if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes))
+    throw new Error("Please provide a valid route");
+  if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
 };
 
 const isDuplicateRoute = (route, availableRoutes) => {
@@ -385,6 +253,8 @@ const defaultRoutesLog = (defaultRoutes, port) => {
   });
 };
 
+// #endregion
+
 /**
  * @deprecated Since version 2.1.1. has be deleted in version 3.0. Use fakeResponse = new FakeResponse().launchServer(); instead.
  */
@@ -392,7 +262,7 @@ export const getResponse = (db?: Db[], config?: Config, globals?: Globals) => {
   console.warn("\n" + chalk.red("! Calling deprecated function !") + "\n");
   console.warn(chalk.red("This function has been deprecated since version 2.1.1."));
   console.warn(chalk.red("Please use use the below code \n"));
-  console.log(chalk.gray('import { FakeResponse } from "fake-response"'));
+  console.log(chalk.gray('const { FakeResponse } = require"fake-response"'));
   console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals)"));
-  console.log(chalk.gray("const fakeResponse.launchServer();"));
+  console.log(chalk.gray("fakeResponse.launchServer();"));
 };

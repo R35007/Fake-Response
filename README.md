@@ -133,7 +133,7 @@ new FakeResponse(db,config).launchServer();
 ### Sample Db
 
 If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the default db [here](https://github.com/R35007/Fake-Response/blob/master/src/defaults.ts)
+You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts)
 
 ### Globals
 
@@ -278,18 +278,24 @@ The data can be fetched from the url you provide. The data endpoint can be defin
 ```js
 const db = [
   {
-    data: "https://jsonplaceholder.typicode.com/todos/1",
+    data: "https://r35007.github.io/Siva_Profile/images/portfolio/Sunset_Birds.jpg",
     dataType: "url",
-    routes: ["/todos/:id"],
+    routes: ["/imageUrl"],
+  },
+  {
+    data: "https://jsonplaceholder.typicode.com/posts/:id/comments",
+    dataType: "url",
+    routes: ["/posts/:id/comments"],
   },
   {
     data: {
-      url: "https://jsonplaceholder.typicode.com/todos",
+      url: "https://jsonplaceholder.typicode.com/comments/:id",
       config: {}, // can pass any authorization or other option. Please verify Axios
     },
     dataType: "url",
-    routes: "/todos",
+    routes: ["/comments/:id"],
   },
+  ,
 ];
 ```
 
