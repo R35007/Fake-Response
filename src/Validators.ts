@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import * as _ from "lodash";
 import { sample_db } from "./samples";
-import { Config, DataType, Db, Globals, Injectors, UserDB } from "./model";
+import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware } from "./model";
 import { Utils } from "./utils";
 
 const fs = require("fs");
@@ -24,100 +24,159 @@ const default_config: Config = {
 
 const default_globals: Globals = {};
 
+const default_Injectors: Injectors[] = [];
+
 export class Validators extends Utils {
-  constructor(db?: UserDB, config?: Config, globals?: Globals) {
-    super(db, config, globals);
+  isValidated = true;
+
+  constructor(
+    protected db?: UserDB,
+    protected config?: Config,
+    protected globals?: Globals,
+    protected injectors?: Injectors[]
+  ) {
+    super();
+    this.loadData(db, config, globals, injectors);
   }
 
-  getValidData = (config: Config = this.config, globals = this.globals, db = this.db) => {
+  loadData = (
+    userDb: Db[] | object | string = this.db,
+    userConfig: Config = this.config,
+    userGlobals: Globals = this.globals,
+    userInjectors: Injectors[] = this.injectors
+  ) => {
+    console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
+    console.log("\n" + chalk.gray("Loading Data..."));
+
+    this.config = this.getValidConfig(userConfig);
+    this.globals = this.getValidGlobals(userGlobals);
+    this.injectors = this.getValidInjectors(userInjectors);
+    this.db = this.getValidDb(userDb);
+
+    console.log(chalk.gray("Done."));
+  };
+
+  getValidData = (db = this.db, config: Config = this.config, globals = this.globals, injectors = this.injectors) => {
+    const valid_config = this.getValidConfig(config);
+    const valid_globals = this.getValidGlobals(globals);
+    const valid_injectors = this.getValidInjectors(injectors);
+    const valid_db = this.getValidDb(db, injectors);
+
     return {
-      valid_config: this.getValidConfig(config),
-      valid_globals: this.getValidGlobals(globals),
-      valid_db: this.getValidDb(db),
+      valid_db,
+      valid_config,
+      valid_globals,
+      valid_injectors,
     };
   };
 
   getValidConfig = (config: Config = this.config) => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
       console.log(chalk.yellow("  Oops, Config not found. Using default Config"));
-      this.config = default_config;
       return default_config;
     }
 
-    const { port, rootPath, middleware, delay } = default_config;
-    const valid_Config = { ...config };
+    try {
+      const { port, rootPath, middleware, delay } = default_config;
+      const valid_Config = { ...config };
 
-    valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port) : port;
-    valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
-    valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
-    valid_Config.delay = this.getConfigDelay(config.delay, delay);
+      valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port) : port;
+      valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
+      valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
+      valid_Config.delay = this.getConfigDelay(config.delay, delay);
 
-    this.config = valid_Config;
-    return valid_Config;
+      return valid_Config;
+    } catch (err) {
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
+    }
   };
 
   getValidGlobals = (globals: Globals = this.globals) => {
-    if (!_.isPlainObject(globals)) {
-      console.log(chalk.yellow("  Oops, Globals not found. Using default Globals"));
-      this.globals = default_globals;
+    if (_.isEmpty(globals) || !_.isPlainObject(globals)) {
       return default_globals;
     }
 
-    this.globals = { ...default_globals, ...globals };
     return { ...default_globals, ...globals };
   };
 
-  getValidDb = (db: UserDB = this.db): Db[] => {
+  getValidInjectors = (injectors: Injectors[]): Injectors[] => {
+    if (_.isEmpty(injectors) || !_.isArray(injectors)) {
+      return default_Injectors;
+    }
+    try {
+      const valid_injectors = injectors.map((injector, i) => {
+        if (!_.isPlainObject(injector)) throw new TypeError(`not an object type. @index : ${i}`);
+        const valid_injector: Injectors = <Injectors>{};
+        valid_injector.routes = this.getValidRoutes(injector.routes);
+        valid_injector.middleware = this.getValidMiddlewares(injector.middleware, 1)[0];
+        valid_injector.delay = this.getValidDelays(injector.delay, 1)[0];
+        return valid_injector;
+      });
+      return valid_injectors;
+    } catch (err) {
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  getValidDb = (db: UserDB = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
       console.log(chalk.yellow("  Oops, Db not found. Using sample DB"));
       db = sample_db;
     }
 
     if (_.isString(db) || _.isPlainObject(db)) {
-      return this.transformJson(db);
+      return this.transformJson(db, injectors);
     } else if (_.isArray(db)) {
-      return this.getValidDbList(db);
+      return this.getValidDbList(db, injectors);
+    } else {
+      return sample_db;
     }
   };
 
-  getValidDbList = (db: Db[] = <Db[]>this.db): Db[] => {
-    if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
-    const valid_Db = db.map((obj, i) => {
-      if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
-      const valid_obj: Db = <Db>{};
-      valid_obj._d_index = i;
-      valid_obj.dataType = <DataType>this.getDataType(obj.dataType);
-      valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>obj.data || "") : obj.data || "";
-      valid_obj.routes = this.getValidRoutes(obj.routes);
-      valid_obj.middlewares = this.getMiddlewares(obj.middlewares, valid_obj.routes.length);
-      valid_obj.delays = this.getDelays(obj.delays, valid_obj.routes.length);
-      return valid_obj;
-    });
-
-    const sorted_db = _.sortBy(valid_Db, ["dataType"]);
-    this.db = sorted_db;
-    return sorted_db;
-  };
-
-  getValidInjector = (injectors: Injectors[] = []): Injectors[] => {
-    if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
-    const valid_injectors = injectors.map((injector, i) => {
-      if (!_.isPlainObject(injector)) throw new TypeError(`not an object type. @index : ${i}`);
-      const valid_injector: Injectors = <Injectors>{};
-      valid_injector.routes = this.getValidRoutes(injector.routes);
-      valid_injector.middleware = this.getMiddlewares(injector.middleware, 1)[0];
-      valid_injector.delay = this.getDelays(injector.delay, 1)[0];
-      return valid_injector;
-    });
-    return valid_injectors;
-  };
-
-  transformJson = (data: object | string, injectors: Injectors[] = []): Db[] => {
+  getValidDbList = (db: Db[] = <Db[]>this.db, injectors: Injectors[] = this.injectors): Db[] => {
     try {
+      if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
+      if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
+      const valid_Db = db.map((obj, i) => {
+        if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
+
+        const valid_obj: Db = <Db>{};
+        valid_obj._d_index = i;
+        valid_obj.dataType = <DataType>this.getValidDataType(obj.dataType);
+        valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>obj.data || "") : obj.data || "";
+        valid_obj.routes = this.getValidRoutes(obj.routes);
+
+        const specific_middlewares = this.getValidMiddlewares(obj.middlewares, valid_obj.routes.length);
+        const specific_delays = this.getValidDelays(obj.delays, valid_obj.routes.length);
+
+        const injector_Middlewares: Middleware[] = <Middleware[]>(
+          valid_obj.routes.map((r) => this.getInjector(r, injectors, "middleware"))
+        );
+        const injector_Delays: number[] = <number[]>(
+          valid_obj.routes.map((d) => this.getInjector(d, injectors, "delay"))
+        );
+
+        valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
+        valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
+
+        return valid_obj;
+      });
+
+      const sorted_db = _.sortBy(valid_Db, ["dataType"]);
+      return sorted_db;
+    } catch (err) {
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  transformJson = (data: object | string = this.db, injectors: Injectors[] = this.injectors): Db[] => {
+    try {
+      if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
       let valid_data = data;
       console.log(chalk.gray("  Transforming Json..."));
-
-      const valid_injectors = this.getValidInjector(injectors);
 
       if (_.isString(data)) {
         if (fs.existsSync(this.parseUrl(data)) && path.extname(this.parseUrl(data)) === ".json") {
@@ -128,30 +187,30 @@ export class Validators extends Utils {
       }
 
       if (_.isPlainObject(valid_data)) {
-        const transformed_db = Object.entries(valid_data).map(([key, data], i, arr) => {
+        const transformed_db = Object.entries(valid_data).map(([key, data], i) => {
           const routes = key.split(",").map(this.getValidRoute);
-          const middlewares = routes.map((r) => this.getInjector(r, valid_injectors, "middleware"));
-          const delays = routes.map((r) => this.getInjector(r, valid_injectors, "delay"));
+          const middlewares = routes.map((r) => this.getInjector(r, injectors, "middleware"));
+          const delays = routes.map((r) => this.getInjector(r, injectors, "delay"));
           const dataType = "default";
-          const db: Db = {
+          const valid_db: Db = {
             _d_index: i,
             data,
             dataType,
             routes,
-            middlewares: middlewares.filter(Boolean).length > 0 ? middlewares : [],
-            delays: delays.filter(Boolean).length > 0 ? delays : [],
+            middlewares: middlewares.filter(Boolean).length > 0 ? <Middleware[]>middlewares : [],
+            delays: delays.filter(Boolean).length > 0 ? <number[]>delays : [],
           };
-          return db;
+          return valid_db;
         });
         const sorted_db = _.sortBy(transformed_db, ["dataType"]);
         console.log(chalk.gray("  Done."));
-        this.db = sorted_db;
         return sorted_db;
       }
 
       throw new Error("Invalid json. Please provide a valid json.");
     } catch (err) {
-      throw new Error(err.message);
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
     }
   };
 
@@ -164,25 +223,13 @@ export class Validators extends Utils {
     return true;
   };
 
-  getValidRoutes = (routes) => {
-    if (!_.isEmpty(routes)) {
-      if (_.isString(routes) || _.isInteger(routes)) {
-        return [this.getValidRoute(routes)];
-      } else if (_.isArray(routes)) {
-        return routes.map(this.getValidRoute);
-      }
-      return [];
-    }
-    return [];
-  };
-
   emptyMiddleware = ({ next }) => {
     next();
   };
 
   parseUrl = (relativeUrl: string) => {
-    const roothPath = _.get(this, "config.rootPath", default_config.rootPath);
-    const parsedUrl = decodeURIComponent(path.resolve(roothPath, _.toString(relativeUrl)));
+    const rootPath = _.get(this, "config.rootPath", default_config.rootPath);
+    const parsedUrl = decodeURIComponent(path.resolve(rootPath, _.toString(relativeUrl)));
     return parsedUrl;
   };
 

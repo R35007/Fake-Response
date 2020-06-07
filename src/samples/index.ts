@@ -5,7 +5,7 @@
  * Fake-Response
  *
  */
-import { Config, Db, Globals } from "../model";
+import { Config, Db, Globals, Injectors } from "../model";
 import {
   commonMiddleware,
   getJsonData,
@@ -14,6 +14,8 @@ import {
   override,
   responseSequence,
   setResponseToGlobal,
+  getInjectedData,
+  queryUser,
 } from "./middlewares";
 
 const path = require("path");
@@ -50,6 +52,16 @@ export const sample_db: Db[] = [
     data: { id: 1, value: "My Response" },
     routes: "override",
     middlewares: override,
+  },
+  {
+    data: "This Route has been injected with a middleware using Injectors",
+    routes: "injector",
+  },
+  {
+    data: "./users.json",
+    dataType: "file",
+    middlewares: queryUser,
+    routes: ["queryUser/:id"],
   },
   {
     data: path.resolve(__dirname, "../../assets/users.json"),
@@ -101,6 +113,19 @@ export const sample_globals: Globals = {
   description: "Hi! Welcome to Fake-Response Server. This response is from global default value",
 };
 
+// Helps to inject a middlware or delay for a specific route
+export const sample_injectors: Injectors[] = [
+  {
+    middleware: getInjectedData,
+    routes: ["/injector"],
+  },
+  {
+    delay: 300,
+    routes: ["/injector", "/delay"], // the delay 300 ms will ignored for /delay route since it already has a specific delay
+  },
+];
+
 export const db = sample_db;
 export const config = sample_config;
 export const globals = sample_globals;
+export const injectors = sample_injectors;

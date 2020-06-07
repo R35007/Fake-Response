@@ -1,18 +1,14 @@
 import * as _ from "lodash";
-import { DataType, Injectors, UserDB, Config, Globals } from "./model";
+import { DataType, Injectors, UserDB, Config, Globals, Middleware, ConfigDelay, ConfigMiddleware } from "./model";
+import { Middlewares } from "./middlewares";
 
 export class Utils {
-  constructor(protected db?: UserDB, protected config?: Config, public globals?: Globals) {
-    this.config = config;
-    this.globals = globals;
-    this.db = db;
-  }
-  protected getInjector = (route: string, injectors: Injectors[], type: string) => {
+  protected getInjector = (route: string, injectors: Injectors[], type: string): Middleware | number | undefined => {
     const relatedInjector = injectors.find((injct) => {
       if (_.isArray(injct.routes)) {
-        return injct.routes.indexOf(route) >= 0;
+        return injct.routes.indexOf(route) >= 0 && typeof injct[type] !== "undefined";
       } else if (!_.isString(injct.routes)) {
-        return injct.routes === route;
+        return injct.routes === route && typeof injct[type] !== "undefined";
       } else {
         throw new Error("Invalid route type. Route must be string or string[]");
       }
@@ -20,7 +16,7 @@ export class Utils {
     return relatedInjector ? relatedInjector[type] : undefined;
   };
 
-  protected getConfigMiddleware = (middleware, d_middleware) => {
+  protected getConfigMiddleware = (middleware, d_middleware): ConfigMiddleware => {
     if (_.isFunction(middleware)) {
       return {
         func: middleware,
@@ -37,7 +33,7 @@ export class Utils {
     return d_middleware;
   };
 
-  protected getConfigDelay = (delay, d_delay) => {
+  protected getConfigDelay = (delay, d_delay): ConfigDelay => {
     if (_.isString(delay) || _.isInteger(delay)) {
       return {
         time: delay,
@@ -55,7 +51,7 @@ export class Utils {
     return d_delay;
   };
 
-  protected getDataType = (dataType: DataType) => {
+  protected getValidDataType = (dataType: DataType) => {
     const default_dataTypes = ["default", "file", "url"];
     if (_.isString(dataType)) {
       const valid_dataType = dataType.trim().toLowerCase();
@@ -64,7 +60,7 @@ export class Utils {
     return "default";
   };
 
-  protected getMiddlewares = (middlewares, len) => {
+  protected getValidMiddlewares = (middlewares, len): Array<Middleware | undefined> => {
     if (_.isFunction(middlewares)) {
       return _.fill(Array(len), middlewares);
     } else if (_.isArray(middlewares)) {
@@ -73,17 +69,28 @@ export class Utils {
     return _.fill(Array(len), undefined);
   };
 
-  protected getDelays = (delays, len) => {
+  protected getValidDelays = (delays, len): Array<number | undefined> => {
     if (_.isString(delays) || _.isInteger(delays)) {
       return _.fill(Array(len), _.toInteger(delays));
     } else if (_.isArray(delays)) {
-      const dly = Array.from(delays, (d) => (_.isString(d) || _.isInteger(d) ? _.toInteger(d) : undefined));
-      return dly.filter(Boolean).length > 0 ? dly : [];
+      return Array.from(delays, (d) => (_.isString(d) || _.isInteger(d) ? _.toInteger(d) : undefined));
+    }
+    return _.fill(Array(len), undefined);
+  };
+
+  getValidRoutes = (routes) => {
+    if (!_.isEmpty(routes)) {
+      if (_.isString(routes) || _.isInteger(routes)) {
+        return [this.getValidRoute(routes)];
+      } else if (_.isArray(routes)) {
+        return routes.map(this.getValidRoute);
+      }
+      return [];
     }
     return [];
   };
 
-  protected getValidRoute = (route) => {
+  getValidRoute = (route) => {
     if (_.isObject(route)) return undefined;
     const validRoute = `${route}`.startsWith("/") ? `${route}` : "/" + route;
     return validRoute;

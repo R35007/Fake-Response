@@ -4,7 +4,7 @@ import cors from "cors";
 import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
-import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB } from "./model";
+import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors } from "./model";
 import { Middlewares } from "./middlewares";
 
 const fs = require("fs"),
@@ -19,20 +19,19 @@ export class FakeResponse extends Middlewares {
 
   private isServerLaunched = false;
   private isExpressAppCreated = false;
-  private isDataLoaded = false;
   private isServerStarted = false;
   private isResourcesLoaded = false;
   private isDefaultsCreated = false;
 
-  constructor(db?: UserDB, config?: Config, globals?: Globals) {
-    super(db, config, globals);
+  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
+    super(db, config, globals, injectors);
   }
 
   launchServer = async () => {
     try {
+      if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isServerLaunched) return;
       this.createExpressApp();
-      this.loadData();
       const server = await this.startServer();
       const results = await this.loadResources();
       await this.createDefaultRoutes();
@@ -63,36 +62,6 @@ export class FakeResponse extends Middlewares {
     this.app.set("json spaces", 2);
     this.isExpressAppCreated = true;
     return this.app;
-  };
-
-  loadData = (
-    userConfig: Config = this.config,
-    userGlobals: Globals = this.globals,
-    userDb: Db[] | object | string = this.db
-  ) => {
-    if (this.isDataLoaded) {
-      return {
-        db: this.db,
-        config: this.config,
-        globals: this.globals,
-      };
-    }
-    console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
-    console.log("\n" + chalk.gray("Loading Data..."));
-
-    const { valid_config, valid_globals, valid_db } = this.getValidData(userConfig, userGlobals, userDb);
-
-    this.db = valid_db;
-    this.config = valid_config;
-    this.globals = valid_globals;
-
-    console.log(chalk.gray("Done."));
-    this.isDataLoaded = true;
-    return {
-      db: valid_db,
-      config: valid_config,
-      globals: valid_globals,
-    };
   };
 
   startServer = (port: number = this.config.port): Promise<Server> => {
@@ -127,11 +96,9 @@ export class FakeResponse extends Middlewares {
 
   // #region Load Resources
   loadResources = async () => {
-    if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
-    if (!this.isDataLoaded) {
-      this.loadData();
-    }
     try {
+      if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
+      if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
       console.log("\n" + chalk.gray("Loading Resources...") + "\n");
       const dbList = <Db[]>this.db;
       const requests = dbList.map(
@@ -154,6 +121,7 @@ export class FakeResponse extends Middlewares {
   private generateRoutes = async (db: Db, index: number): Promise<RouteResult[]> => {
     const { data = "", dataType = "default", routes = [], _d_index = index }: Db = db;
     try {
+      if (routes.length === 0) throw new Error("routes not found. Please provide any route.");
       const results = (<string[]>routes).reduce((result: RouteResult[], route, i) => {
         return result.concat(this.generateRoute(route, data, db, i, index));
       }, []);
@@ -181,16 +149,20 @@ export class FakeResponse extends Middlewares {
   };
 
   createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
-    checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
-    this.fullDbData[route] = data;
-    const delayTime = getDelayTime(route, delay, this.config.delay);
-    this.app.all(route, [
-      this.initialMiddlewareWrapper(data, dataType, middleware, this.config.middleware, delayTime),
-      this.specificMiddlewareWrapper(this.globals),
-      this.commonMiddlewareWrapper(this.globals),
-      this.defaultMiddleware,
-    ]);
-    console.log("  http://localhost:" + this.config.port + route);
+    try {
+      checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
+      this.fullDbData[route] = data;
+      const delayTime = getDelayTime(route, delay, this.config.delay);
+      this.app.all(route, [
+        this.initialMiddlewareWrapper(data, dataType, middleware, this.config.middleware, delayTime),
+        this.specificMiddlewareWrapper(this.globals),
+        this.commonMiddlewareWrapper(this.globals),
+        this.defaultMiddleware,
+      ]);
+      console.log("  http://localhost:" + this.config.port + route);
+    } catch (err) {
+      console.error(chalk.red(err.message));
+    }
   };
   // #endregion Load Resources
 
@@ -220,6 +192,11 @@ export class FakeResponse extends Middlewares {
     defaultRoutesLog(defaultRoutes, this.config.port);
     this.isDefaultsCreated = true;
   };
+
+  getDb = () => this.db;
+  getConfig = () => this.config;
+  getGlobals = () => this.globals;
+  getInjectors = () => this.injectors;
 }
 
 // #region Utils
@@ -262,7 +239,7 @@ export const getResponse = (db?: Db[], config?: Config, globals?: Globals) => {
   console.warn("\n" + chalk.red("! Calling deprecated function !") + "\n");
   console.warn(chalk.red("This function has been deprecated since version 2.1.1."));
   console.warn(chalk.red("Please use use the below code \n"));
-  console.log(chalk.gray('const { FakeResponse } = require"fake-response"'));
-  console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals)"));
+  console.log(chalk.gray('const { FakeResponse } = require("fake-response")'));
+  console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals, injectors)"));
   console.log(chalk.gray("fakeResponse.launchServer();"));
 };

@@ -24,18 +24,18 @@ export type Middleware = (params: MiddlewareParams) => any;
 export interface Config {
   port?: number;
   rootPath?: string;
-  middleware?:
-    | Middleware
-    | {
-        func: Middleware;
-        excludeRoutes?: string[];
-      };
-  delay?:
-    | number
-    | {
-        time: number;
-        excludeRoutes?: string[];
-      };
+  middleware?: Middleware | ConfigMiddleware;
+  delay?: number | ConfigDelay;
+}
+
+export interface ConfigMiddleware {
+  func: Middleware;
+  excludeRoutes?: string[];
+}
+
+export interface ConfigDelay {
+  time: number;
+  excludeRoutes?: string[];
 }
 
 export interface Globals {

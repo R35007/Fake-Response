@@ -9,7 +9,7 @@ const parseUrl = (relativeUrl: string) => {
   return typeof relativeUrl === "string" ? decodeURIComponent(path.resolve(process.cwd(), relativeUrl)) : "./";
 };
 
-let db, config, globals;
+let db, config, globals, injectors;
 
 try {
   if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".js") {
@@ -17,6 +17,7 @@ try {
     db = data.db;
     config = data.config;
     globals = data.globals;
+    injectors = data.globals;
   } else if (dbPath && path.extname(parseUrl(dbPath)) && path.extname(parseUrl(dbPath)) === ".json") {
     db = parseUrl(dbPath);
   } else {
@@ -24,8 +25,10 @@ try {
     db = data.db;
     config = data.config;
     globals = data.globals;
+    injectors = data.injectors;
   }
-  new FakeResponse(db, config, globals).launchServer();
+  const fakeResponse = new FakeResponse(db, config, globals, injectors);
+  fakeResponse.launchServer();
 } catch (err) {
   console.log("\n" + chalk.red(err.message) + "\n");
 }

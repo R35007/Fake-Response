@@ -4,13 +4,13 @@ import { Validators } from "./Validators";
 import axios, { AxiosRequestConfig } from "axios";
 import * as _ from "lodash";
 
-import { Config, Globals, Middleware, MiddlewareParams, UserDB, FileType, URLType, Locals } from "./model";
+import { Config, Globals, Middleware, MiddlewareParams, UserDB, FileType, URLType, Locals, Injectors } from "./model";
 const fs = require("fs"),
   path = require("path");
 
 class DefaultMiddlewares extends Validators {
-  constructor(db?: UserDB, config?: Config, globals?: Globals) {
-    super(db, config, globals);
+  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
+    super(db, config, globals, injectors);
   }
   // #region Default Common Middlewares
   protected logResponseTime = (req, res, next) => {
@@ -46,8 +46,8 @@ class DefaultMiddlewares extends Validators {
 }
 
 export class Middlewares extends DefaultMiddlewares {
-  constructor(db?: UserDB, config?: Config, globals?: Globals) {
-    super(db, config, globals);
+  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
+    super(db, config, globals, injectors);
   }
   protected initialMiddlewareWrapper = (
     data: any,
@@ -59,10 +59,10 @@ export class Middlewares extends DefaultMiddlewares {
     return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
         res.locals = { data, dataType, specificMiddleware, commonMiddleware, delay };
+        this.redirectIfMissingParams(req, res);
         if (dataType == "file") {
           res.locals.fileType = this.getResponseFromFile(data);
         } else if (dataType === "url") {
-          this.redirectIfMissingParams(req, res);
           res.locals.urlType = await this.getParsedDynamicUrl(data, req);
         }
         setTimeout(() => {
