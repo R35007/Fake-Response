@@ -65,6 +65,7 @@ export class FakeResponse extends Middlewares {
   };
 
   startServer = (port: number = this.config.port): Promise<Server> => {
+    if(!this.app) this.createExpressApp();
     if (this.isServerStarted) return Promise.resolve(this.server);
     return new Promise((resolve, reject) => {
       console.log("\n" + chalk.gray("Starting Server..."));
@@ -97,6 +98,7 @@ export class FakeResponse extends Middlewares {
   // #region Load Resources
   loadResources = async () => {
     try {
+      if(!this.app) this.createExpressApp();
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
       console.log("\n" + chalk.gray("Loading Resources...") + "\n");
@@ -150,6 +152,7 @@ export class FakeResponse extends Middlewares {
 
   createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
     try {
+      if(!this.app) this.createExpressApp();
       checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
       const delayTime = getDelayTime(route, delay, this.config.delay);
@@ -167,10 +170,11 @@ export class FakeResponse extends Middlewares {
   // #endregion Load Resources
 
   createDefaultRoutes = () => {
+    if(!this.app) this.createExpressApp();
     if (this.isDefaultsCreated) return;
     const HOME = "/",
       DB = "/db",
-      ROUTESLIST = "/routesList";
+      ROUTELIST = "/routesList";
     const defaultRoutes = [];
 
     if (this.availableRoutes.indexOf(HOME) < 0) {
@@ -183,9 +187,9 @@ export class FakeResponse extends Middlewares {
         res.send(this.fullDbData);
       });
     }
-    if (this.availableRoutes.indexOf(ROUTESLIST) < 0) {
-      defaultRoutes.push(ROUTESLIST);
-      this.app.all(ROUTESLIST, (req, res) => {
+    if (this.availableRoutes.indexOf(ROUTELIST) < 0) {
+      defaultRoutes.push(ROUTELIST);
+      this.app.all(ROUTELIST, (req, res) => {
         res.send(this.availableRoutes);
       });
     }
@@ -231,15 +235,3 @@ const defaultRoutesLog = (defaultRoutes, port) => {
 };
 
 // #endregion
-
-/**
- * @deprecated Since version 2.1.1. has be deleted in version 3.0. Use fakeResponse = new FakeResponse().launchServer(); instead.
- */
-export const getResponse = (db?: Db[], config?: Config, globals?: Globals) => {
-  console.warn("\n" + chalk.red("! Calling deprecated function !") + "\n");
-  console.warn(chalk.red("This function has been deprecated since version 2.1.1."));
-  console.warn(chalk.red("Please use use the below code \n"));
-  console.log(chalk.gray('const { FakeResponse } = require("fake-response")'));
-  console.log(chalk.gray("const fakeResponse = new FakeResponse(db, config, globals, injectors)"));
-  console.log(chalk.gray("fakeResponse.launchServer();"));
-};

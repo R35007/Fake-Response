@@ -24,6 +24,8 @@ export type Middleware = (params: MiddlewareParams) => any;
 export interface Config {
   port?: number;
   rootPath?: string;
+  env?: string;
+  excludeRoutes? : string[];
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
 }

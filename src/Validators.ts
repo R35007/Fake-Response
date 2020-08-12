@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as _ from "lodash";
-import { sample_db } from "./samples";
+import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
 import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware } from "./model";
 import { Utils } from "./utils";
 
@@ -10,6 +10,8 @@ const path = require("path");
 const default_config: Config = {
   port: 3000,
   rootPath: "./",
+  env:"",
+  excludeRoutes : [],
   middleware: {
     func: ({ next }) => {
       next();
@@ -20,6 +22,10 @@ const default_config: Config = {
     time: 0,
     excludeRoutes: [],
   },
+};
+
+const default_db: UserDB = {
+  "helloWorld":"hello World"
 };
 
 const default_globals: Globals = {};
@@ -36,6 +42,12 @@ export class Validators extends Utils {
     protected injectors?: Injectors[]
   ) {
     super();
+    if(!db && !config && !globals && !injectors) {
+      db = sample_db;
+      config = sample_config;
+      globals = sample_globals;
+      injectors = sample_injectors
+    }
     this.loadData(db, config, globals, injectors);
   }
 
@@ -77,11 +89,12 @@ export class Validators extends Utils {
     }
 
     try {
-      const { port, rootPath, middleware, delay } = default_config;
+      const { port, rootPath, excludeRoutes, middleware, delay } = default_config;
       const valid_Config = { ...config };
 
       valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port) : port;
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
+      valid_Config.excludeRoutes = _.isArray(config.excludeRoutes) ? config.excludeRoutes.map(this.getValidRoute) : excludeRoutes;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
 
@@ -122,8 +135,8 @@ export class Validators extends Utils {
 
   getValidDb = (db: UserDB = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
-      console.log(chalk.yellow("  Oops, Db not found. Using sample DB"));
-      db = sample_db;
+      console.log(chalk.yellow("  Oops, Db not found. Using default DB"));
+      db = default_db;
     }
 
     if (_.isString(db) || _.isPlainObject(db)) {
@@ -186,22 +199,36 @@ export class Validators extends Utils {
         }
       }
 
+      
       if (_.isPlainObject(valid_data)) {
-        const transformed_db = Object.entries(valid_data).map(([key, data], i) => {
+        
+        const ENV = this.config.env;
+        //makes the env routes as a valid routes
+        if(!_.isEmpty(ENV) &&  !_.isEmpty(valid_data[ENV])){
+          valid_data[ENV] = Object.entries(valid_data[ENV])
+          .reduce((res, [key,val])=>({...res, [this.getValidRoute(key)]:val}),{});
+        }
+        
+        const transformed_db = <Db[]>Object.entries(valid_data).map(([key, data], i) => {
           const routes = key.split(",").map(this.getValidRoute);
-          const middlewares = routes.map((r) => this.getInjector(r, injectors, "middleware"));
-          const delays = routes.map((r) => this.getInjector(r, injectors, "delay"));
-          const dataType = "default";
-          const valid_db: Db = {
-            _d_index: i,
-            data,
-            dataType,
-            routes,
-            middlewares: middlewares.filter(Boolean).length > 0 ? <Middleware[]>middlewares : [],
-            delays: delays.filter(Boolean).length > 0 ? <number[]>delays : [],
-          };
-          return valid_db;
-        });
+          const unExcludedRoutes = routes.filter(r => this.config.excludeRoutes.indexOf(r)<0);
+          if(unExcludedRoutes && unExcludedRoutes.length>0){
+            const middlewares = routes.map((r) => this.getInjector(r, injectors, "middleware"));
+            const delays = routes.map((r) => this.getInjector(r, injectors, "delay"));
+            const dataType = "default";
+            const envData = this.getEnvironmentalData(unExcludedRoutes[0], data, valid_data)
+            const valid_db: Db = {
+              _d_index: i,
+              data : envData,
+              dataType,
+              routes,
+              middlewares: middlewares.filter(Boolean).length > 0 ? <Middleware[]>middlewares : [],
+              delays: delays.filter(Boolean).length > 0 ? <number[]>delays : [],
+            };
+            return valid_db;
+          }
+          return false;
+        }).filter(Boolean);
         const sorted_db = _.sortBy(transformed_db, ["dataType"]);
         console.log(chalk.gray("  Done."));
         return sorted_db;
@@ -213,6 +240,15 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
     }
   };
+
+  getEnvironmentalData = (unExcludedRoute, data, dbJson)=>{
+    const ENV = this.config.env;
+    if(!_.isEmpty(ENV) &&  !_.isEmpty(dbJson[ENV])){
+      const envData =  _.get(dbJson,`${ENV}.${unExcludedRoute}`,false);
+      return envData || data;
+    }
+    return data
+  }
 
   isValidURL = (str: string) => {
     try {

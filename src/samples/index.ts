@@ -113,7 +113,7 @@ export const sample_globals: Globals = {
   description: "Hi! Welcome to Fake-Response Server. This response is from global default value",
 };
 
-// Helps to inject a middlware or delay for a specific route
+// Helps to inject a middleware or delay for a specific route
 export const sample_injectors: Injectors[] = [
   {
     middleware: getInjectedData,

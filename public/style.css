@@ -161,7 +161,8 @@ code {
   width: 50%;
   padding: 20px;
   border-radius: 4px;
-  min-height: 520px;
+  overflow: hidden;
+  height: calc(100vh - 140px);
 }
 
 #resources-container .resources-wrapper #iframe-wrapper #iframe-header {
@@ -177,7 +178,7 @@ code {
 iframe {
   border: 0;
   width: 100%;
-  height: -webkit-fill-available;
+  height: calc(100% - 44.8px);
 }
 
 ::-webkit-scrollbar {

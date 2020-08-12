@@ -2,7 +2,7 @@ import { Middleware } from "../model";
 
 export const commonMiddleware = ({ next }) => {
   // do something here
-  next(); // executes the default middleaware by express js
+  next(); // executes the default Middleware by express js
 };
 
 export const globalDescription = ({ res, globals }) => {
