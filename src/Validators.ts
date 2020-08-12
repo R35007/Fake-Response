@@ -92,7 +92,7 @@ export class Validators extends Utils {
       const { port, rootPath, excludeRoutes, middleware, delay } = default_config;
       const valid_Config = { ...config };
 
-      valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port) : port;
+      valid_Config.port = !_.isEmpty(config.port) && !_.isObject(config.port) ? _.toInteger(config.port) : port;
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
       valid_Config.excludeRoutes = _.isArray(config.excludeRoutes) ? config.excludeRoutes.map(this.getValidRoute) : excludeRoutes;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
