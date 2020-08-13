@@ -157,13 +157,14 @@ export class Validators extends Utils {
       const valid_Db = db.map((obj, i) => {
         if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
-        const {data, dataType, routes, middlewares, delays, ...env} = obj;
+        const {data, dataType, routes, middlewares, delays, env} = obj;
 
         const valid_obj: Db = <Db>{};
         valid_obj._d_index = i;
         valid_obj.dataType = <DataType>this.getValidDataType(dataType);
         valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
         valid_obj.routes = this.getValidRoutes(obj.routes);
+        valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {}
 
         const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
         const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
@@ -178,7 +179,7 @@ export class Validators extends Utils {
         valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
         valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
 
-        return {...env,...valid_obj};
+        return valid_obj;
       });
 
       const sorted_db = _.sortBy(valid_Db, ["dataType"]);
@@ -205,12 +206,12 @@ export class Validators extends Utils {
 
       
       if (_.isPlainObject(valid_data)) {
-        
+        valid_data = <Object>valid_data
         const ENV = this.config.env;
         //makes the env routes as a valid routes
         if(!_.isEmpty(ENV) &&  !_.isEmpty(valid_data[ENV])){
-          valid_data[ENV] = Object.entries(valid_data[ENV])
-          .reduce((res, [key,val])=>({...res, [this.getValidRoute(key)]:val}),{});
+          valid_data = {...valid_data,...valid_data[ENV]};
+          delete valid_data[ENV];
         }
         
         const transformed_db = <Db[]>Object.entries(valid_data).map(([key, data], i) => {
@@ -220,10 +221,9 @@ export class Validators extends Utils {
             const middlewares = routes.map((r) => this.getInjector(r, injectors, "middleware"));
             const delays = routes.map((r) => this.getInjector(r, injectors, "delay"));
             const dataType = "default";
-            const envData = this.getEnvironmentalData(unExcludedRoutes[0], data, valid_data)
             const valid_db: Db = {
               _d_index: i,
-              data : envData,
+              data,
               dataType,
               routes,
               middlewares: middlewares.filter(Boolean).length > 0 ? <Middleware[]>middlewares : [],
@@ -235,6 +235,7 @@ export class Validators extends Utils {
         }).filter(Boolean);
         const sorted_db = _.sortBy(transformed_db, ["dataType"]);
         console.log(chalk.gray("  Done."));
+
         return sorted_db;
       }
 
@@ -244,15 +245,6 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
     }
   };
-
-  getEnvironmentalData = (unExcludedRoute, data, dbJson)=>{
-    const ENV = this.config.env;
-    if(!_.isEmpty(ENV) &&  !_.isEmpty(dbJson[ENV])){
-      const envData =  _.get(dbJson,`${ENV}.${unExcludedRoute}`,false);
-      return envData || data;
-    }
-    return data
-  }
 
   isValidURL = (str: string) => {
     try {

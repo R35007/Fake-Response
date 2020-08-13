@@ -135,7 +135,7 @@ export class FakeResponse extends Middlewares {
   };
 
   private generateRoute = (db, route, _r_index, _s_index): RouteResult => {
-    const { data, dataType, middlewares, delays, _d_index = _s_index, ...env } = db;
+    const { data, dataType, middlewares, delays, _d_index = _s_index, env = {} } = db;
     try {
       const envData = env[this.config.env] || data;
       this.createRoute(envData, route, dataType, middlewares[_r_index], delays[_r_index]);

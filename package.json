@@ -1,6 +1,6 @@
 {
   "name": "fake-response",
-  "version": "3.2.4",
+  "version": "3.2.5",
   "description": "customize your own dynamic mock REST API",
   "main": "dist/index.js",
   "scripts": {

@@ -266,16 +266,20 @@ const db =[{
   data : {
     name : "foo"
   },
-  prod:{
+  env:{
+    prod:{
       name : "bar"
+    }
   },
 },{
   routes:"other",
   data : {
     value : "foo"
   },
-  dev:{
+  env:{
+    dev:{
       value : "bar"
+    }
   },
 }]
 

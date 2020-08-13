@@ -10,6 +10,9 @@ export interface Db {
   routes: string | string[];
   middlewares?: Middleware | Array<Middleware | undefined>;
   delays?: number | number[];
+  env?: {
+    [key : string] : any
+  }
 }
 
 export interface DataUrl {
