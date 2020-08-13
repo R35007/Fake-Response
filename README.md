@@ -38,7 +38,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [getConfig](#getconfig)
   - [getGlobals](#getglobals)
   - [getInjectors](#getinjectors)
-  - [getValidData](#getvalidData)
+  - [getValidData](#getvaliddata)
 - [Author](#author)
 - [License](#license)
 
@@ -94,7 +94,7 @@ Hello World
 - Can set any value to globals and can be accessed at any point of time.
 - The mock data can be maintained in different json files and urls which helps to organize your mock data
 - The return response can be manipulated or overridden for a specific route by a middleware method.
-- Switch between environmental data 
+- Switch between environmental data
 
 ## How To Use
 
@@ -111,10 +111,12 @@ const config: Config = {
   middleware: {
     func: ({next}) => {next()},
     excludeRoutes: [],
+    override : false // if true common middleware runs first before the specific middleware
   },
   delay: {
     time: 0, // must give in milliseconds
     excludeRoutes: [],
+    override : false // if true overrides the specific delay with the common delay
   },
   env : "",
   excludeRoutes : []
@@ -259,6 +261,26 @@ For example :
 
 ```js
 
+const db =[{
+  routes:"user",
+  data : {
+    name : "foo"
+  },
+  prod:{
+      name : "bar"
+  },
+},{
+  routes:"other",
+  data : {
+    value : "foo"
+  },
+  dev:{
+      value : "bar"
+  },
+}]
+
+// or
+
 const db = {
   user : {
     name : "foo"
@@ -270,6 +292,11 @@ const db = {
   prod :{
     user : {
       name : "bar"
+    }
+  },
+  dev :{
+    other : {
+      value : "bar"
     }
   }
 }
@@ -559,46 +586,46 @@ The routes and port can be overridden in the `db.js` configs
 
 ### FakeResponse
 
+This is a constructor to initialize the db, config, globals, Injectors
+
 ```js
 const { FakeResponse } = require("fake-response");
 
 const db = {
-  "hello":{
-    value : "Hello World"
-  }
-}
+  hello: {
+    value: "Hello World",
+  },
+};
 
 const config = {
-  port : 4000
-}
+  port: 4000,
+};
 
 const globals = {
-  description : "This is a predefined value"
-}
+  description: "This is a predefined value",
+};
 
 const Injectors = [
   {
-    middleware : ({next,globals})=>{
+    middleware: ({ next, globals }) => {
       console.log(globals.description);
       next();
     },
-    delay : 2000,
-    routes:["hello"]
-  }
-]
+    delay: 2000,
+    routes: ["hello"],
+  },
+];
 
 const fakeResponse = new FakeResponse(db, config, globals, injectors);
 ```
 
-This is a constructor to initialize the db, config, globals, Injectors
-
 **`Params`**
 
-| Name      | Type   | Required | Default        | Description                                                           |
-| --------- | ------ | -------- | -------------- | --------------------------------------------------------------------- |
-| db        | object | No       | sample_db      | This object generates the local rest api.                             |
-| config    | object | No       | default_config | This object sets the port, common middleware and delay                |
-| globals   | object | No       | {}             | This object helps to store the global values                          |
+| Name      | Type   | Required | Default        | Description                                                            |
+| --------- | ------ | -------- | -------------- | ---------------------------------------------------------------------- |
+| db        | object | No       | default_db      | This object generates the local rest api.                              |
+| config    | object | No       | default_config | This object sets the port, common middleware and delay                 |
+| globals   | object | No       | {}             | This object helps to store the global values                           |
 | injectors | array  | No       | []             | Helps to inject a specific middleware or delay for the existing routes |
 
 ### launchServer
@@ -652,19 +679,20 @@ Returns a Promise of Routes results - the success and failure status of the gene
 ```js
 fakeResponse.loadResources();
 ```
+
 ### createRoute
 
 Create a new route with specific middleware or delay
 
 ```js
 const data = {
-  value : "This is  anew Data"
-}
+  value: "This is  anew Data",
+};
 
-const newMiddleware = ({next})=>{
+const newMiddleware = ({ next }) => {
   console.log("This middleware run specifically for the /newRoute");
   next();
-}
+};
 
 fakeResponse.createRoute(data, "default", "/newRoute", newMiddleware, 100);
 ```
@@ -724,26 +752,29 @@ fakeResponse.getInjectors();
 returns the Valid Data of DB, config, globals, injectors.
 
 ```js
-const {valid_db, valid_config, valid_globals, valid_injectors} = fakeResponse.getValidData(db, config, globals, injectors);
-
+const {
+  valid_db,
+  valid_config,
+  valid_globals,
+  valid_injectors,
+} = fakeResponse.getValidData(db, config, globals, injectors);
 
 // use the below api to get a specific valid data
-const valid_config = fakeResponse.getValidConfig(config) // validates and return a valid config
-const valid_globals = fakeResponse.getValidGlobals(globals) // validates and return a valid globals
-const valid_db = fakeResponse.getValidDb(db, injectors) // validates and return a valid db
-const valid_db = fakeResponse.transformJson(db, injectors) // helps to convert the JSON db to a structured DB to create a route
-const valid_injectors = fakeResponse.getValidInjectors(injectors) // validates and return a valid injectors
+const valid_config = fakeResponse.getValidConfig(config); // validates and return a valid config
+const valid_globals = fakeResponse.getValidGlobals(globals); // validates and return a valid globals
+const valid_db = fakeResponse.getValidDb(db, injectors); // validates and return a valid db
+const valid_db = fakeResponse.transformJson(db, injectors); // helps to convert the JSON db to a structured DB to create a route
+const valid_injectors = fakeResponse.getValidInjectors(injectors); // validates and return a valid injectors
 ```
 
 **`Params`**
 
-| Name      | Type   | Required | Default        | Description                                                           |
-| --------- | ------ | -------- | -------------- | --------------------------------------------------------------------- |
-| db        | object | No       | sample_db      | This object generates the local rest api.                             |
-| config    | object | No       | default_config | This object sets the port, common middleware and delay                |
-| globals   | object | No       | {}             | This object helps to store the global values                          |
+| Name      | Type   | Required | Default        | Description                                                            |
+| --------- | ------ | -------- | -------------- | ---------------------------------------------------------------------- |
+| db        | object | No       | sample_db      | This object generates the local rest api.                              |
+| config    | object | No       | default_config | This object sets the port, common middleware and delay                 |
+| globals   | object | No       | {}             | This object helps to store the global values                           |
 | injectors | array  | No       | []             | Helps to inject a specific middleware or delay for the existing routes |
-
 
 ## Author
 

@@ -30,14 +30,18 @@ export interface Config {
   delay?: number | ConfigDelay;
 }
 
-export interface ConfigMiddleware {
+export interface ConfigMiddleware extends middlewareAndDelayCommon {
   func: Middleware;
   excludeRoutes?: string[];
 }
 
-export interface ConfigDelay {
+export interface ConfigDelay extends middlewareAndDelayCommon {
   time: number;
+}
+
+interface middlewareAndDelayCommon {
   excludeRoutes?: string[];
+  override? : boolean;
 }
 
 export interface Globals {

@@ -17,10 +17,12 @@ const default_config: Config = {
       next();
     },
     excludeRoutes: [],
+    override : false
   },
   delay: {
     time: 0,
     excludeRoutes: [],
+    override : false
   },
 };
 
@@ -155,26 +157,28 @@ export class Validators extends Utils {
       const valid_Db = db.map((obj, i) => {
         if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
+        const {data, dataType, routes, middlewares, delays, ...env} = obj;
+
         const valid_obj: Db = <Db>{};
         valid_obj._d_index = i;
-        valid_obj.dataType = <DataType>this.getValidDataType(obj.dataType);
-        valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>obj.data || "") : obj.data || "";
+        valid_obj.dataType = <DataType>this.getValidDataType(dataType);
+        valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
         valid_obj.routes = this.getValidRoutes(obj.routes);
 
-        const specific_middlewares = this.getValidMiddlewares(obj.middlewares, valid_obj.routes.length);
-        const specific_delays = this.getValidDelays(obj.delays, valid_obj.routes.length);
+        const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
+        const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
 
         const injector_Middlewares: Middleware[] = <Middleware[]>(
           valid_obj.routes.map((r) => this.getInjector(r, injectors, "middleware"))
         );
         const injector_Delays: number[] = <number[]>(
-          valid_obj.routes.map((d) => this.getInjector(d, injectors, "delay"))
+          valid_obj.routes.map((r) => this.getInjector(r, injectors, "delay"))
         );
 
         valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
         valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
 
-        return valid_obj;
+        return {...env,...valid_obj};
       });
 
       const sorted_db = _.sortBy(valid_Db, ["dataType"]);

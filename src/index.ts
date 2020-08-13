@@ -104,9 +104,9 @@ export class FakeResponse extends Middlewares {
       console.log("\n" + chalk.gray("Loading Resources...") + "\n");
       const dbList = <Db[]>this.db;
       const requests = dbList.map(
-        (data, i) =>
+        (db, dbIndex) =>
           new Promise(async (resolve) => {
-            const results = await this.generateRoutes(data, i);
+            const results = await this.generateRoutes(db, dbIndex);
             resolve(results);
           })
       );
@@ -120,24 +120,25 @@ export class FakeResponse extends Middlewares {
     }
   };
 
-  private generateRoutes = async (db: Db, index: number): Promise<RouteResult[]> => {
-    const { data = "", dataType = "default", routes = [], _d_index = index }: Db = db;
+  private generateRoutes = async (db: Db, _s_index: number): Promise<RouteResult[]> => {
+    const { routes = [], _d_index = _s_index }: Db = db;
     try {
       if (routes.length === 0) throw new Error("routes not found. Please provide any route.");
-      const results = (<string[]>routes).reduce((result: RouteResult[], route, i) => {
-        return result.concat(this.generateRoute(route, data, db, i, index));
+      const results = (<string[]>routes).reduce((result: RouteResult[], route, _r_index) => {
+        return result.concat(this.generateRoute(db, route, _r_index, _s_index));
       }, []);
       return results;
     } catch (err) {
       console.error(chalk.red(`  http://localhost:${this.config.port} `) + `- ${err.message} @index : ${_d_index}`);
-      return [{ routes, _d_index, _s_index: index, status: "failure", error: err.message }];
+      return [{ routes, _d_index, _s_index, status: "failure", error: err.message }];
     }
   };
 
-  private generateRoute = (route, response, db, _r_index, _s_index): RouteResult => {
-    const { dataType, middlewares, delays, _d_index = _s_index } = db;
+  private generateRoute = (db, route, _r_index, _s_index): RouteResult => {
+    const { data, dataType, middlewares, delays, _d_index = _s_index, ...env } = db;
     try {
-      this.createRoute(response, route, dataType, middlewares[_r_index], delays[_r_index]);
+      const envData = env[this.config.env] || data;
+      this.createRoute(envData, route, dataType, middlewares[_r_index], delays[_r_index]);
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
@@ -156,17 +157,32 @@ export class FakeResponse extends Middlewares {
       checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
       const delayTime = getDelayTime(route, delay, this.config.delay);
-      this.app.all(route, [
-        this.initialMiddlewareWrapper(data, dataType, middleware, this.config.middleware, delayTime),
-        this.specificMiddlewareWrapper(this.globals),
-        this.commonMiddlewareWrapper(this.globals),
-        this.defaultMiddleware,
-      ]);
+      const middlewareList = this.getMiddlewareList(data, dataType, middleware, this.config.middleware, delayTime, this.globals);
+      this.app.all(route, middlewareList);
       console.log("  http://localhost:" + this.config.port + route);
     } catch (err) {
       console.error(chalk.red(err.message));
     }
   };
+
+  private getMiddlewareList(data, dataType, middleware, configMiddleware, delayTime, globals){
+    if(configMiddleware.override){
+      return[
+        this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
+        this.commonMiddlewareWrapper(globals),
+        this.specificMiddlewareWrapper(globals),
+        this.defaultMiddleware,
+      ]
+    }
+
+    return [
+      this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
+      this.specificMiddlewareWrapper(globals),
+      this.commonMiddlewareWrapper(globals),
+      this.defaultMiddleware,
+    ]
+  }
+
   // #endregion Load Resources
 
   createDefaultRoutes = () => {
@@ -205,8 +221,11 @@ export class FakeResponse extends Middlewares {
 
 // #region Utils
 const getDelayTime = (route, specificDelay, commonDelay) => {
-  const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : 0;
-  return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime;
+  const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : false;
+  if(commonDelay.override){
+    return typeof commonDelayTime !== "undefined" && commonDelayTime >= 0 ? commonDelayTime : specificDelay;
+  }
+  return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime || 0;
 };
 
 const checkRoute = (dataType, route, delay, availableRoutes) => {

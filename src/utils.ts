@@ -25,9 +25,11 @@ export class Utils {
     } else if (_.isPlainObject(middleware) && !_.isEmpty(middleware)) {
       const func = middleware.func;
       const excludeRoutes = middleware.excludeRoutes;
+      const override = middleware.override;
       return {
         func: _.isFunction(func) ? func : d_middleware.middleware,
         excludeRoutes: _.isArray(excludeRoutes) ? excludeRoutes.map(this.getValidRoute) : d_middleware.excludeRoutes,
+        override : override==true
       };
     }
     return d_middleware;
@@ -42,10 +44,11 @@ export class Utils {
     } else if (_.isPlainObject(delay) && !_.isEmpty(delay)) {
       const time = delay.time;
       const excludeRoutes = delay.excludeRoutes;
-
+      const override = delay.override;
       return {
         time: _.isString(time) || _.isInteger(time) ? time : d_delay.time,
         excludeRoutes: _.isArray(excludeRoutes) ? excludeRoutes.map(this.getValidRoute) : d_delay.excludeRoutes,
+        override : override==true
       };
     }
     return d_delay;
