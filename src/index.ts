@@ -101,7 +101,7 @@ export class FakeResponse extends Middlewares {
       if(!this.app) this.createExpressApp();
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
-      console.log("\n" + chalk.gray("Loading Resources...") + "\n");
+      console.log("\n" + chalk.gray("Loading Resources..."));
       const dbList = <Db[]>this.db;
       const requests = dbList.map(
         (db, dbIndex) =>
@@ -111,7 +111,7 @@ export class FakeResponse extends Middlewares {
           })
       );
       const results = await Promise.all(requests);
-      console.log("\n" + chalk.gray("Done. Resources Loaded."));
+      console.log(chalk.gray("Done. Resources Loaded."));
       this.routesResults = <RouteResult[]>_.flatten(results);
       this.isResourcesLoaded = true;
       return this.routesResults;
@@ -159,7 +159,7 @@ export class FakeResponse extends Middlewares {
       const delayTime = getDelayTime(route, delay, this.config.delay);
       const middlewareList = this.getMiddlewareList(data, dataType, middleware, this.config.middleware, delayTime, this.globals);
       this.app.all(route, middlewareList);
-      console.log("  http://localhost:" + this.config.port + route);
+      // console.log("  http://localhost:" + this.config.port + route);
     } catch (err) {
       console.error(chalk.red(err.message));
     }

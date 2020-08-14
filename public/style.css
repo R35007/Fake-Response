@@ -147,7 +147,7 @@ code {
 
 #resources-container .resources-wrapper #resources-list {
   flex: 1;
-  height: 600px;
+  height: calc(100vh - 100px);;
   overflow: auto;
 }
 
