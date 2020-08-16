@@ -10,7 +10,6 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 - [Advantages](#advantages)
 - [How To Use](#how-to-use)
   - [Default Config](#default-config)
-  - [Sample DB](#sample-db)
   - [Globals](#globals)
   - [Injectors](#injectors)
   - [Sharing between Routes](#sharing-between-routes)
@@ -151,11 +150,6 @@ const config: Config = {
 
 new FakeResponse(db,config).launchServer();
 ```
-
-### Sample Db
-
-If you don't pass any db to the `getResponse` api by default the script runs the sample db.
-You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts)
 
 ### Globals
 
@@ -525,6 +519,7 @@ This package is built upon express jS. Please visit [expressJs](https://expressj
 ### Sample
 
 Here is simple example for starter. Runs at ["http://localhost:3000"]("http://localhost:3000")
+You could find the sample db [here](https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts)
 
 ```js
 const { FakeResponse } = require("fake-response");
