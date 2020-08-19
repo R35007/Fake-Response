@@ -29,7 +29,7 @@ export class Utils {
       return {
         func: _.isFunction(func) ? func : d_middleware.middleware,
         excludeRoutes: _.isArray(excludeRoutes) ? excludeRoutes.map(this.getValidRoute) : d_middleware.excludeRoutes,
-        override : override==true
+        override: override == true,
       };
     }
     return d_middleware;
@@ -48,23 +48,23 @@ export class Utils {
       return {
         time: _.isString(time) || _.isInteger(time) ? time : d_delay.time,
         excludeRoutes: _.isArray(excludeRoutes) ? excludeRoutes.map(this.getValidRoute) : d_delay.excludeRoutes,
-        override : override==true
+        override: override == true,
       };
     }
     return d_delay;
   };
 
-  protected getValidProxy = (obj) =>{
-    if(!Object.entries(obj).every(([_key, val])=> _.isString(val))) throw new Error("Please Provide a Valid Proxy")
+  protected getValidProxy = (obj) => {
+    if (!Object.entries(obj).every(([_key, val]) => _.isString(val))) throw new Error("Please Provide a Valid Proxy");
     const valid_Proxy = Object.entries(obj).reduce((res, [key, data]) => {
       return {
         ...res,
-        [this.getValidRoute(key)] : this.getValidRoute(data)
-      }
+        [this.getValidRoute(key)]: this.getValidRoute(data),
+      };
     }, {});
 
     return valid_Proxy;
-  }
+  };
 
   protected getValidDataType = (dataType: DataType) => {
     const default_dataTypes = ["default", "file", "url"];

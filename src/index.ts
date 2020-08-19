@@ -65,7 +65,7 @@ export class FakeResponse extends Middlewares {
   };
 
   startServer = (port: number = this.config.port): Promise<Server> => {
-    if(!this.app) this.createExpressApp();
+    if (!this.app) this.createExpressApp();
     if (this.isServerStarted) return Promise.resolve(this.server);
     return new Promise((resolve, reject) => {
       console.log("\n" + chalk.gray("Starting Server..."));
@@ -98,7 +98,7 @@ export class FakeResponse extends Middlewares {
   // #region Load Resources
   loadResources = async () => {
     try {
-      if(!this.app) this.createExpressApp();
+      if (!this.app) this.createExpressApp();
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
       console.log("\n" + chalk.gray("Loading Resources..."));
@@ -142,10 +142,7 @@ export class FakeResponse extends Middlewares {
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
-      console.log(
-        chalk.red(`  http://localhost:${this.config.port}${route} `) +
-          `- ${err.message} @index : ${_d_index}:${_r_index}`
-      );
+      console.log(chalk.red(`  http://localhost:${this.config.port}${route} `) + `- ${err.message} @index : ${_d_index}:${_r_index}`);
       const status = <Status>"failure";
       return { routes: route, _d_index, _s_index, _r_index, status, error: err.message };
     }
@@ -153,7 +150,7 @@ export class FakeResponse extends Middlewares {
 
   createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
     try {
-      if(!this.app) this.createExpressApp();
+      if (!this.app) this.createExpressApp();
       checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
       const delayTime = getDelayTime(route, delay, this.config.delay);
@@ -165,14 +162,14 @@ export class FakeResponse extends Middlewares {
     }
   };
 
-  private getMiddlewareList(data, dataType, middleware, configMiddleware, delayTime, globals){
-    if(configMiddleware.override){
-      return[
+  private getMiddlewareList(data, dataType, middleware, configMiddleware, delayTime, globals) {
+    if (configMiddleware.override) {
+      return [
         this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
         this.commonMiddlewareWrapper(globals),
         this.specificMiddlewareWrapper(globals),
         this.defaultMiddleware,
-      ]
+      ];
     }
 
     return [
@@ -180,13 +177,13 @@ export class FakeResponse extends Middlewares {
       this.specificMiddlewareWrapper(globals),
       this.commonMiddlewareWrapper(globals),
       this.defaultMiddleware,
-    ]
+    ];
   }
 
   // #endregion Load Resources
 
   createDefaultRoutes = () => {
-    if(!this.app) this.createExpressApp();
+    if (!this.app) this.createExpressApp();
     if (this.isDefaultsCreated) return;
     const HOME = "/",
       DB = "/db",
@@ -217,7 +214,7 @@ export class FakeResponse extends Middlewares {
 // #region Utils
 const getDelayTime = (route, specificDelay, commonDelay) => {
   const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : false;
-  if(commonDelay.override){
+  if (commonDelay.override) {
     return typeof commonDelayTime !== "undefined" && commonDelayTime >= 0 ? commonDelayTime : specificDelay;
   }
   return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime || 0;
@@ -225,8 +222,7 @@ const getDelayTime = (route, specificDelay, commonDelay) => {
 
 const checkRoute = (dataType, route, delay, availableRoutes) => {
   if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
-  if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes))
-    throw new Error("Please provide a valid route");
+  if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes)) throw new Error("Please provide a valid route");
   if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
 };
 

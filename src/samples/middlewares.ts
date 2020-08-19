@@ -20,10 +20,7 @@ export const responseSequence: Middleware = ({ req, res, data, globals }) => {
   const resp = [data, "init", "start", "hold", "stop"];
   const currentRespIndex = resp.indexOf(globals.value);
   globals.value = resp[currentRespIndex + 1] || resp[0]; // loop through responses for each request
-  res.send(
-    globals.value +
-      `  -  Please click <a href="${req.path}" target="_blank">${req.path}</a> or refresh to change the response`
-  );
+  res.send(globals.value + `  -  Please click <a href="${req.path}" target="_blank">${req.path}</a> or refresh to change the response`);
 };
 
 export const setResponseToGlobal: Middleware = ({ res, req, globals }) => {

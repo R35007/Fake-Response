@@ -11,8 +11,8 @@ export interface Db {
   middlewares?: Middleware | Array<Middleware | undefined>;
   delays?: number | number[];
   env?: {
-    [key : string] : any
-  }
+    [key: string]: any;
+  };
 }
 
 export interface DataUrl {
@@ -28,10 +28,10 @@ export interface Config {
   port?: number;
   rootPath?: string;
   env?: string;
-  proxy?:{
-    [key:string]:string
+  proxy?: {
+    [key: string]: string;
   };
-  excludeRoutes? : string[];
+  excludeRoutes?: string[];
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
 }
@@ -47,7 +47,7 @@ export interface ConfigDelay extends middlewareAndDelayCommon {
 
 interface middlewareAndDelayCommon {
   excludeRoutes?: string[];
-  override? : boolean;
+  override?: boolean;
 }
 
 export interface Globals {

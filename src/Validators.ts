@@ -10,7 +10,7 @@ const path = require("path");
 const default_config: Config = {
   port: 3000,
   rootPath: "./",
-  env:"",
+  env: "",
   excludeRoutes: [],
   proxy: {},
   middleware: {
@@ -18,17 +18,17 @@ const default_config: Config = {
       next();
     },
     excludeRoutes: [],
-    override : false
+    override: false,
   },
   delay: {
     time: 0,
     excludeRoutes: [],
-    override : false
+    override: false,
   },
 };
 
 const default_db: UserDB = {
-  "helloWorld":"hello World"
+  helloWorld: "hello World",
 };
 
 const default_globals: Globals = {};
@@ -38,29 +38,23 @@ const default_Injectors: Injectors[] = [];
 export class Validators extends Utils {
   isValidated = true;
 
-  constructor(
-    protected db?: UserDB,
-    protected config?: Config,
-    protected globals?: Globals,
-    protected injectors?: Injectors[]
-  ) {
+  constructor(protected db?: UserDB, protected config?: Config, protected globals?: Globals, protected injectors?: Injectors[]) {
     super();
-    if(!db && !config && !globals && !injectors) {
+    if (!db && !config && !globals && !injectors) {
       db = sample_db;
       config = sample_config;
       globals = sample_globals;
-      injectors = sample_injectors
+      injectors = sample_injectors;
     }
     this.setData(db, config, globals, injectors);
   }
 
-  setData =(
+  setData = (
     userDb: Db[] | object | string = this.db,
     userConfig: Config = this.config,
     userGlobals: Globals = this.globals,
     userInjectors: Injectors[] = this.injectors
   ) => {
-
     console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
     console.log("\n" + chalk.gray("Loading Data..."));
 
@@ -72,14 +66,14 @@ export class Validators extends Utils {
     console.log(chalk.gray("Done."));
   };
 
-  getData =()=>{
+  getData = () => {
     return {
-      db : this.db,
-      config :  this.config,
-      globals : this.globals,
-      injectors : this.injectors
+      db: this.db,
+      config: this.config,
+      globals: this.globals,
+      injectors: this.injectors,
     };
-  }
+  };
 
   getValidConfig = (config: Config = this.config) => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
@@ -153,50 +147,45 @@ export class Validators extends Utils {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
       if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
 
-
       const valid_injector = this.getValidInjectors(injectors);
 
-      const valid_Db = <Db[]>db.map((obj, i) => {
+      const valid_Db = <Db[]>db
+        .map((obj, i) => {
+          if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
-        if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
-        
-        const valid_obj: Db = <Db>{};
-        const {data, dataType, routes, middlewares, delays, env} = obj;
+          const valid_obj: Db = <Db>{};
+          const { data, dataType, routes, middlewares, delays, env } = obj;
 
-        const valid_routes = this.getValidRoutes(routes);
-        valid_obj.routes = [...valid_routes];
-        
-        const included_proxy_Routes = valid_routes.reduce((res, r) =>{
-          return !_.isEmpty(this.config.proxy[r]) ? [...res,this.config.proxy[r]] : res
-        },valid_obj.routes)
-        
-        valid_obj.routes = included_proxy_Routes.filter(r => this.config.excludeRoutes.indexOf(r)<0);
+          const valid_routes = this.getValidRoutes(routes);
+          valid_obj.routes = [...valid_routes];
 
-        if(valid_obj.routes && valid_obj.routes.length>0){
-          valid_obj._d_index = i;
-          valid_obj.dataType = <DataType>this.getValidDataType(dataType);
-          valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
-          valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {}
-  
-          const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
-          const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
-  
-          const injector_Middlewares: Middleware[] = <Middleware[]>(
-            valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "middleware"))
-          );
-          const injector_Delays: number[] = <number[]>(
-            valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "delay"))
-          );
-  
-          valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
-          valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
-  
-          return valid_obj;
-          
-        }else{
-          return false;
-        }
-      }).filter(Boolean);
+          const included_proxy_Routes = valid_routes.reduce((res, r) => {
+            return !_.isEmpty(this.config.proxy[r]) ? [...res, this.config.proxy[r]] : res;
+          }, valid_obj.routes);
+
+          valid_obj.routes = included_proxy_Routes.filter((r) => this.config.excludeRoutes.indexOf(r) < 0);
+
+          if (valid_obj.routes && valid_obj.routes.length > 0) {
+            valid_obj._d_index = i;
+            valid_obj.dataType = <DataType>this.getValidDataType(dataType);
+            valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
+            valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {};
+
+            const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
+            const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
+
+            const injector_Middlewares: Middleware[] = <Middleware[]>valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "middleware"));
+            const injector_Delays: number[] = <number[]>valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "delay"));
+
+            valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
+            valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
+
+            return valid_obj;
+          } else {
+            return false;
+          }
+        })
+        .filter(Boolean);
 
       const sorted_db = _.sortBy(valid_Db, ["dataType"]);
       return sorted_db;
@@ -219,26 +208,25 @@ export class Validators extends Utils {
         }
       }
 
-      
       if (_.isPlainObject(valid_data)) {
-        valid_data = <Object>valid_data
+        valid_data = <Object>valid_data;
         const ENV = this.config.env;
         //makes the env routes as a valid routes
-        if(!_.isEmpty(ENV) &&  !_.isEmpty(valid_data[ENV])){
-          valid_data = {...valid_data,...valid_data[ENV]};
+        if (!_.isEmpty(ENV) && !_.isEmpty(valid_data[ENV])) {
+          valid_data = { ...valid_data, ...valid_data[ENV] };
           delete valid_data[ENV];
         }
-        
+
         const transformed_db = <Db[]>Object.entries(valid_data).map(([key, data]) => {
-            const routes = key.split(",");
-            const valid_db: Db = {
-              data,
-              routes,
-            };
-            return valid_db;
+          const routes = key.split(",");
+          const valid_db: Db = {
+            data,
+            routes,
+          };
+          return valid_db;
         });
 
-        const valid_Db = this.getValidDbList(transformed_db, injectors)
+        const valid_Db = this.getValidDbList(transformed_db, injectors);
         console.log(chalk.gray("  Done."));
 
         return valid_Db;
