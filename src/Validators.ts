@@ -11,7 +11,8 @@ const default_config: Config = {
   port: 3000,
   rootPath: "./",
   env:"",
-  excludeRoutes : [],
+  excludeRoutes: [],
+  proxy: {},
   middleware: {
     func: ({ next }) => {
       next();
@@ -50,39 +51,35 @@ export class Validators extends Utils {
       globals = sample_globals;
       injectors = sample_injectors
     }
-    this.loadData(db, config, globals, injectors);
+    this.setData(db, config, globals, injectors);
   }
 
-  loadData = (
+  setData =(
     userDb: Db[] | object | string = this.db,
     userConfig: Config = this.config,
     userGlobals: Globals = this.globals,
     userInjectors: Injectors[] = this.injectors
   ) => {
+
     console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
     console.log("\n" + chalk.gray("Loading Data..."));
 
     this.config = this.getValidConfig(userConfig);
     this.globals = this.getValidGlobals(userGlobals);
     this.injectors = this.getValidInjectors(userInjectors);
-    this.db = this.getValidDb(userDb);
+    this.db = this.getValidDb(userDb, this.injectors);
 
     console.log(chalk.gray("Done."));
   };
 
-  getValidData = (db = this.db, config: Config = this.config, globals = this.globals, injectors = this.injectors) => {
-    const valid_config = this.getValidConfig(config);
-    const valid_globals = this.getValidGlobals(globals);
-    const valid_injectors = this.getValidInjectors(injectors);
-    const valid_db = this.getValidDb(db, injectors);
-
+  getData =()=>{
     return {
-      valid_db,
-      valid_config,
-      valid_globals,
-      valid_injectors,
+      db : this.db,
+      config :  this.config,
+      globals : this.globals,
+      injectors : this.injectors
     };
-  };
+  }
 
   getValidConfig = (config: Config = this.config) => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
@@ -91,7 +88,7 @@ export class Validators extends Utils {
     }
 
     try {
-      const { port, rootPath, excludeRoutes, middleware, delay } = default_config;
+      const { port, rootPath, excludeRoutes, middleware, delay, proxy } = default_config;
       const valid_Config = { ...config };
 
       valid_Config.port = !_.isEmpty(config.port) && !_.isObject(config.port) ? _.toInteger(config.port) : port;
@@ -99,6 +96,7 @@ export class Validators extends Utils {
       valid_Config.excludeRoutes = _.isArray(config.excludeRoutes) ? config.excludeRoutes.map(this.getValidRoute) : excludeRoutes;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
+      valid_Config.proxy = _.isPlainObject(config.proxy) ? this.getValidProxy(config.proxy) : proxy;
 
       return valid_Config;
     } catch (err) {
@@ -154,33 +152,51 @@ export class Validators extends Utils {
     try {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
       if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
-      const valid_Db = db.map((obj, i) => {
-        if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
+
+      const valid_injector = this.getValidInjectors(injectors);
+
+      const valid_Db = <Db[]>db.map((obj, i) => {
+
+        if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
+        
+        const valid_obj: Db = <Db>{};
         const {data, dataType, routes, middlewares, delays, env} = obj;
 
-        const valid_obj: Db = <Db>{};
-        valid_obj._d_index = i;
-        valid_obj.dataType = <DataType>this.getValidDataType(dataType);
-        valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
-        valid_obj.routes = this.getValidRoutes(obj.routes);
-        valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {}
+        const valid_routes = this.getValidRoutes(routes);
+        valid_obj.routes = [...valid_routes];
+        
+        const included_proxy_Routes = valid_routes.reduce((res, r) =>{
+          return !_.isEmpty(this.config.proxy[r]) ? [...res,this.config.proxy[r]] : res
+        },valid_obj.routes)
+        
+        valid_obj.routes = included_proxy_Routes.filter(r => this.config.excludeRoutes.indexOf(r)<0);
 
-        const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
-        const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
-
-        const injector_Middlewares: Middleware[] = <Middleware[]>(
-          valid_obj.routes.map((r) => this.getInjector(r, injectors, "middleware"))
-        );
-        const injector_Delays: number[] = <number[]>(
-          valid_obj.routes.map((r) => this.getInjector(r, injectors, "delay"))
-        );
-
-        valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
-        valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
-
-        return valid_obj;
-      });
+        if(valid_obj.routes && valid_obj.routes.length>0){
+          valid_obj._d_index = i;
+          valid_obj.dataType = <DataType>this.getValidDataType(dataType);
+          valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
+          valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {}
+  
+          const specific_middlewares = this.getValidMiddlewares(middlewares, valid_obj.routes.length);
+          const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
+  
+          const injector_Middlewares: Middleware[] = <Middleware[]>(
+            valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "middleware"))
+          );
+          const injector_Delays: number[] = <number[]>(
+            valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "delay"))
+          );
+  
+          valid_obj.middlewares = specific_middlewares.map((m, i) => (!_.isFunction(m) ? injector_Middlewares[i] : m));
+          valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
+  
+          return valid_obj;
+          
+        }else{
+          return false;
+        }
+      }).filter(Boolean);
 
       const sorted_db = _.sortBy(valid_Db, ["dataType"]);
       return sorted_db;
@@ -192,7 +208,6 @@ export class Validators extends Utils {
 
   transformJson = (data: object | string = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     try {
-      if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
       let valid_data = data;
       console.log(chalk.gray("  Transforming Json..."));
 
@@ -214,29 +229,19 @@ export class Validators extends Utils {
           delete valid_data[ENV];
         }
         
-        const transformed_db = <Db[]>Object.entries(valid_data).map(([key, data], i) => {
-          const routes = key.split(",").map(this.getValidRoute);
-          const unExcludedRoutes = routes.filter(r => this.config.excludeRoutes.indexOf(r)<0);
-          if(unExcludedRoutes && unExcludedRoutes.length>0){
-            const middlewares = routes.map((r) => this.getInjector(r, injectors, "middleware"));
-            const delays = routes.map((r) => this.getInjector(r, injectors, "delay"));
-            const dataType = "default";
+        const transformed_db = <Db[]>Object.entries(valid_data).map(([key, data]) => {
+            const routes = key.split(",");
             const valid_db: Db = {
-              _d_index: i,
               data,
-              dataType,
               routes,
-              middlewares: middlewares.filter(Boolean).length > 0 ? <Middleware[]>middlewares : [],
-              delays: delays.filter(Boolean).length > 0 ? <number[]>delays : [],
             };
             return valid_db;
-          }
-          return false;
-        }).filter(Boolean);
-        const sorted_db = _.sortBy(transformed_db, ["dataType"]);
+        });
+
+        const valid_Db = this.getValidDbList(transformed_db, injectors)
         console.log(chalk.gray("  Done."));
 
-        return sorted_db;
+        return valid_Db;
       }
 
       throw new Error("Invalid json. Please provide a valid json.");

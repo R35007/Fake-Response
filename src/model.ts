@@ -28,6 +28,9 @@ export interface Config {
   port?: number;
   rootPath?: string;
   env?: string;
+  proxy?:{
+    [key:string]:string
+  };
   excludeRoutes? : string[];
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;

@@ -212,11 +212,6 @@ export class FakeResponse extends Middlewares {
     defaultRoutesLog(defaultRoutes, this.config.port);
     this.isDefaultsCreated = true;
   };
-
-  getDb = () => this.db;
-  getConfig = () => this.config;
-  getGlobals = () => this.globals;
-  getInjectors = () => this.injectors;
 }
 
 // #region Utils

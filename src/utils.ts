@@ -54,6 +54,18 @@ export class Utils {
     return d_delay;
   };
 
+  protected getValidProxy = (obj) =>{
+    if(!Object.entries(obj).every(([_key, val])=> _.isString(val))) throw new Error("Please Provide a Valid Proxy")
+    const valid_Proxy = Object.entries(obj).reduce((res, [key, data]) => {
+      return {
+        ...res,
+        [this.getValidRoute(key)] : this.getValidRoute(data)
+      }
+    }, {});
+
+    return valid_Proxy;
+  }
+
   protected getValidDataType = (dataType: DataType) => {
     const default_dataTypes = ["default", "file", "url"];
     if (_.isString(dataType)) {
