@@ -10,6 +10,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 - [Advantages](#advantages)
 - [How To Use](#how-to-use)
   - [Default Config](#default-config)
+  - [Proxy](#proxy)
   - [Globals](#globals)
   - [Injectors](#injectors)
   - [Sharing between Routes](#sharing-between-routes)
@@ -33,11 +34,8 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [loadResources](#loadresources)
   - [createRoute](#createroute)
   - [createDefaultRoutes](#createdefaultroutes)
-  - [getDb](#getdb)
-  - [getConfig](#getconfig)
-  - [getGlobals](#getglobals)
-  - [getInjectors](#getinjectors)
-  - [getValidData](#getvaliddata)
+  - [setData](#setdata)
+  - [getData](#getdata)
 - [Author](#author)
 - [License](#license)
 
@@ -118,6 +116,7 @@ const config: Config = {
     override : false // if true overrides the specific delay with the common delay
   },
   env : "",
+  proxy : {}
   excludeRoutes : []
 };
 ```
@@ -131,7 +130,7 @@ const db = {
   "hello":"Hello World"
 };
 
-const config: Config = {
+const config = {
   port: 4000,
   middleware: {
     func: ({next}) => {
@@ -149,6 +148,32 @@ const config: Config = {
 };
 
 new FakeResponse(db,config).launchServer();
+```
+
+### Proxy
+
+You can able to sset the proxy inside the config object. For Example
+
+```js
+const { FakeResponse } = require("fake-response");
+
+const db = {
+  "hello":"Hello World"
+};
+
+const config = {
+  proxy: {
+    "hello":"helloWorld"
+  }
+};
+
+new FakeResponse(db,config).launchServer();
+```
+
+Now if you go to [http://localhost:3000/helloWorld](http://localhost:3000/helloWorld), you'll get
+
+```text
+Hello World
 ```
 
 ### Globals
@@ -714,56 +739,27 @@ Create a default home, db, routes list api
 fakeResponse.createDefaultRoutes();
 ```
 
-### getDb
+### setData
 
-returns the current DB
+set the db, config, globals, injectors
 
 ```js
-fakeResponse.getDb();
+fakeResponse.setData(db, config, globals, injectors)
 ```
 
-### getConfig
+### getData
 
-returns the current configs
-
-```js
-fakeResponse.getConfig();
-```
-
-### getGlobals
-
-returns the current Globals
+returns the valid  DB, config, globals, injectors
 
 ```js
-fakeResponse.getGlobals();
-```
-
-### getInjectors
-
-returns the current Injectors
-
-```js
-fakeResponse.getInjectors();
-```
-
-### getValidData
-
-returns the Valid Data of DB, config, globals, injectors.
-
-```js
-const {
-  valid_db,
-  valid_config,
-  valid_globals,
-  valid_injectors,
-} = fakeResponse.getValidData(db, config, globals, injectors);
+const{db, config, globals, injectors} = fakeResponse.getData();
 
 // use the below api to get a specific valid data
 const valid_config = fakeResponse.getValidConfig(config); // validates and return a valid config
+const valid_injectors = fakeResponse.getValidInjectors(injectors); // validates and return a valid injector
 const valid_globals = fakeResponse.getValidGlobals(globals); // validates and return a valid globals
 const valid_db = fakeResponse.getValidDb(db, injectors); // validates and return a valid db
 const valid_db = fakeResponse.transformJson(db, injectors); // helps to convert the JSON db to a structured DB to create a route
-const valid_injectors = fakeResponse.getValidInjectors(injectors); // validates and return a valid injectors
 ```
 
 **`Params`**
@@ -785,4 +781,4 @@ const valid_injectors = fakeResponse.getValidInjectors(injectors); // validates 
 
 ## License
 
-ISC
+MIT
