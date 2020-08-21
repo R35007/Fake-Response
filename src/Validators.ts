@@ -1,11 +1,12 @@
 import chalk from "chalk";
 import * as _ from "lodash";
 import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
-import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware } from "./model";
+import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, HarEntry, HAR } from "./model";
 import { Utils } from "./utils";
 
 const fs = require("fs");
 const path = require("path");
+const url = require("url");
 
 const default_config: Config = {
   port: 3000,
@@ -258,6 +259,36 @@ export class Validators extends Utils {
       throw new Error("Invalid json. Please provide a valid json.");
     } catch (err) {
       this.isValidated = false;
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  transformHar = (harData: HAR = <HAR>{}, filters: string[] = []) => {
+    try {
+      const entries: HarEntry[] = _.get(harData, "log.entries", []);
+      const xhrFiltered = entries.filter((e) => filters.indexOf(e._resourceType) >= 0);
+      const statusFiltered = xhrFiltered.filter((x) => x.response.status >= 200 && x.response.status < 400);
+
+      const mock = statusFiltered.reduce((result, data) => {
+        const route = url.parse(data.request.url).pathname;
+        const valid_Route = this.getValidRoute(route);
+        const responseText = _.get(data, "response.content.text", "");
+
+        let response;
+        try {
+          response = JSON.parse(responseText);
+        } catch {
+          response = responseText;
+        }
+
+        return {
+          ...result,
+          [valid_Route]: response,
+        };
+      }, {});
+
+      return mock;
+    } catch (err) {
       console.error(chalk.red(err.message));
     }
   };
