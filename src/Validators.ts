@@ -147,9 +147,15 @@ export class Validators extends Utils {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
       if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
 
+      let valid_Db = <Db[]>db;
+      const proxy = this.config.proxy;
       const valid_injector = this.getValidInjectors(injectors);
 
-      const valid_Db = <Db[]>db
+      if (!_.isEmpty(proxy) && _.isPlainObject(proxy)) {
+        valid_Db = this.getProxyedDb(valid_Db, proxy);
+      }
+
+      valid_Db = <Db[]>valid_Db
         .map((obj, i) => {
           if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
@@ -157,13 +163,7 @@ export class Validators extends Utils {
           const { data, dataType, routes, middlewares, delays, env } = obj;
 
           const valid_routes = this.getValidRoutes(routes);
-          valid_obj.routes = [...valid_routes];
-
-          const included_proxy_Routes = valid_routes.reduce((res, r) => {
-            return !_.isEmpty(this.config.proxy[r]) ? [...res, this.config.proxy[r]] : res;
-          }, valid_obj.routes);
-
-          valid_obj.routes = included_proxy_Routes.filter((r) => this.config.excludeRoutes.indexOf(r) < 0);
+          valid_obj.routes = valid_routes.filter((r) => this.config.excludeRoutes.indexOf(r) < 0);
 
           if (valid_obj.routes && valid_obj.routes.length > 0) {
             valid_obj._d_index = i;
@@ -195,6 +195,29 @@ export class Validators extends Utils {
     }
   };
 
+  private getProxyedDb = (db: Db[], proxy) => {
+    const proxyeRoutesVal = Object.entries(proxy).map(([_key, val]) => val);
+    const proxyeRoutes = Object.keys(proxy);
+    const proxyedDb = db
+      .map((d) => {
+        const routes = this.getValidRoutes(d.routes);
+        const nonProxyRoutes = routes.filter((r) => proxyeRoutesVal.indexOf(r) < 0);
+        if (nonProxyRoutes.length) {
+          const withProxyRoutes = nonProxyRoutes.reduce((result, r) => {
+            return proxyeRoutes.indexOf(r) >= 0 ? [...result, r, proxy[r]] : [...result, r];
+          }, []);
+          return {
+            ...d,
+            routes: withProxyRoutes,
+          };
+        }
+        return false;
+      })
+      .filter(Boolean);
+
+    return <Db[]>proxyedDb;
+  };
+
   transformJson = (data: object | string = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     try {
       let valid_data = data;
@@ -211,9 +234,9 @@ export class Validators extends Utils {
       if (_.isPlainObject(valid_data)) {
         valid_data = <Object>valid_data;
         const ENV = this.config.env;
-        //makes the env routes as a valid routes
+        //removes all dev routes and contains only env routes;
         if (!_.isEmpty(ENV) && !_.isEmpty(valid_data[ENV])) {
-          valid_data = { ...valid_data, ...valid_data[ENV] };
+          valid_data = this.getOnlyEnvData(valid_data, valid_data[ENV]);
           delete valid_data[ENV];
         }
 
@@ -237,6 +260,19 @@ export class Validators extends Utils {
       this.isValidated = false;
       console.error(chalk.red(err.message));
     }
+  };
+
+  private getOnlyEnvData = (devData, envData) => {
+    const envDataRoutes = Object.keys(envData).reduce((res, key) => [...res, ...key.split(",")], []);
+    const validEnvRoutes = this.getValidRoutes(_.flatten(envDataRoutes));
+
+    const nonDevData = Object.entries(devData).reduce((res, [key, val]) => {
+      const routes = this.getValidRoutes(key.split(","));
+      const nonEnvRoutes = routes.filter((r) => validEnvRoutes.indexOf(r) < 0);
+      return nonEnvRoutes.length ? { ...res, [nonEnvRoutes.join(",")]: val } : res;
+    }, {});
+
+    return { ...nonDevData, ...envData };
   };
 
   isValidURL = (str: string) => {
