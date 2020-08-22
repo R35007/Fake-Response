@@ -36,6 +36,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [createDefaultRoutes](#createdefaultroutes)
   - [setData](#setdata)
   - [getData](#getdata)
+  - [transformJson](#transformjson)
   - [transformHar](#transformhar)
 - [Author](#author)
 - [License](#license)
@@ -153,7 +154,7 @@ new FakeResponse(db,config).launchServer();
 
 ### Proxy
 
-You can able to sset the proxy inside the config object. For Example
+You can able to set the proxy inside the config object. For Example
 
 ```js
 const { FakeResponse } = require("fake-response");
@@ -756,7 +757,6 @@ const valid_config = fakeResponse.getValidConfig(config); // validates and retur
 const valid_injectors = fakeResponse.getValidInjectors(injectors); // validates and return a valid injector
 const valid_globals = fakeResponse.getValidGlobals(globals); // validates and return a valid globals
 const valid_db = fakeResponse.getValidDb(db, injectors); // validates and return a valid db
-const valid_db = fakeResponse.transformJson(db, injectors); // helps to convert the JSON db to a structured DB to create a route
 ```
 
 **`Params`**
@@ -768,16 +768,31 @@ const valid_db = fakeResponse.transformJson(db, injectors); // helps to convert 
 | globals   | object | No       | {}             | This object helps to store the global values                           |
 | injectors | array  | No       | []             | Helps to inject a specific middleware or delay for the existing routes |
 
+### transformJson
+
+This helps to convert the JSON db to a structured DB to create a route
+
+```js
+const valid_db = fakeResponse.transformJson(db, injectors);
+```
+
+**`Params`**
+
+| Name      | Type             | Required | Default | Description                                                            |
+| --------- | ---------------- | -------- | ------- | ---------------------------------------------------------------------- |
+| db        | object or string | No       | {}      | This object generates the local rest api.                              |
+| injectors | array            | No       | []      | Helps to inject a specific middleware or delay for the existing routes |
+
 ### transformHar
 
 The HTTP Archive format, or HAR, is a JSON-formatted archive file format for logging of a web browser's interaction with a site. The common extension for these files is .har. [Wikipedia](<https://en.wikipedia.org/wiki/HAR_(file_format)>).
 
 Using this now it is very much simpler to mock your prod data in ease. Follow the steps to mock your prod Data.
 
-Setp 1 : Open Chrome and developer tools
-Step 2 : Start the networklistening andrun your appwhichyoulike tomock the data
-Step 3 : click the export HARdownload icona nd save it as a `loalhost.json`.
-Step 4 : Nowdo the following code in db.js
+Step 1 : Open Chrome and developer tools
+Step 2 : Start the network listening and run your app which you like to mock the data
+Step 3 : click the export HAR download icon and save it as a `localhost.json`.
+Step 4 : Now do the following code in db.js
 
 ```js
 const { FakeResponse } = require("fake-response");

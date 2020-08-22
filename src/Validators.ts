@@ -51,23 +51,44 @@ export class Validators extends Utils {
     this.setData(db, config, globals, injectors);
   }
 
+  /**
+   * This function validates and sets the Data explicitly
+   * @param {string|object|array} db - The db which you would link to generate a routes
+   * @param {object} config - Provide your server configs
+   * @param {object} globals - Provide your global declarations
+   * @param {array} injectors - Provide your injectors to inject any middleware or delay to a particular routes
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * fakeResponse.setData(db, config, globals, injectors);
+   * @link https://github.com/R35007/Fake-Response#setdata - For further info pls visit this ReadMe
+   */
   setData = (
-    userDb: Db[] | object | string = this.db,
-    userConfig: Config = this.config,
-    userGlobals: Globals = this.globals,
-    userInjectors: Injectors[] = this.injectors
+    db: Db[] | object | string = this.db,
+    config: Config = this.config,
+    globals: Globals = this.globals,
+    injectors: Injectors[] = this.injectors
   ) => {
     console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
     console.log("\n" + chalk.gray("Loading Data..."));
 
-    this.config = this.getValidConfig(userConfig);
-    this.globals = this.getValidGlobals(userGlobals);
-    this.injectors = this.getValidInjectors(userInjectors);
-    this.db = this.getValidDb(userDb, this.injectors);
+    this.config = this.getValidConfig(config);
+    this.globals = this.getValidGlobals(globals);
+    this.injectors = this.getValidInjectors(injectors);
+    this.db = this.getValidDb(db, this.injectors);
 
     console.log(chalk.gray("Done."));
   };
 
+  /**
+   * This function helps to get initialized data
+   * @return {object} the current valid db, config, globals, injectors
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const {db, config, globals, injectors} = fakeResponse.getData();
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getData = () => {
     return {
       db: this.db,
@@ -77,6 +98,16 @@ export class Validators extends Utils {
     };
   };
 
+  /**
+   * This function validates and returns the config object
+   * @param {object} config
+   * @return {object} the valid config
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const config = fakeResponse.getValidConfig(config);
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getValidConfig = (config: Config = this.config) => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
       console.log(chalk.yellow("  Oops, Config not found. Using default Config"));
@@ -101,6 +132,16 @@ export class Validators extends Utils {
     }
   };
 
+  /**
+   * This function validates and returns the globals object
+   * @param {object} globals
+   * @return {object} the valid globals
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const globals = fakeResponse.getValidGlobals(globals);
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getValidGlobals = (globals: Globals = this.globals) => {
     if (_.isEmpty(globals) || !_.isPlainObject(globals)) {
       return default_globals;
@@ -109,6 +150,16 @@ export class Validators extends Utils {
     return { ...default_globals, ...globals };
   };
 
+  /**
+   * This function validates and returns the injectors object
+   * @param {object} injectors
+   * @return {array} the valid injectors
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const injectors = fakeResponse.getValidInjectors(injectors);
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getValidInjectors = (injectors: Injectors[]): Injectors[] => {
     if (_.isEmpty(injectors) || !_.isArray(injectors)) {
       return default_Injectors;
@@ -129,6 +180,17 @@ export class Validators extends Utils {
     }
   };
 
+  /**
+   * This function validates and returns the db List
+   * @param {object | string | array} db
+   * @param {array} injectors
+   * @return {array} the valid db
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.getValidDb(db,injectors);
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getValidDb = (db: UserDB = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
       console.log(chalk.yellow("  Oops, Db not found. Using default DB"));
@@ -144,6 +206,17 @@ export class Validators extends Utils {
     }
   };
 
+  /**
+   * This function validates and returns the db List
+   * @param {array} db
+   * @param {array} injectors
+   * @return {array} the valid db
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.getValidDbList(db);
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
   getValidDbList = (db: Db[] = <Db[]>this.db, injectors: Injectors[] = this.injectors): Db[] => {
     try {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
@@ -198,12 +271,12 @@ export class Validators extends Utils {
   };
 
   private getProxyedDb = (db: Db[], proxy) => {
-    const proxyeRouteVals = Object.entries(proxy).map(([_key, val]) => val);
+    const proxyRouteVals = Object.entries(proxy).map(([_key, val]) => val);
     const proxyedDb = db
       .map((d) => {
-        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => proxyeRouteVals.indexOf(r) < 0);
+        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => proxyRouteVals.indexOf(r) < 0);
         if (nonProxyRoutes.length) {
-          const routes = this.getProxedRoutes(nonProxyRoutes, proxy);
+          const routes = this.getProxyedRoutes(nonProxyRoutes, proxy);
           return { ...d, routes };
         }
         return false;
@@ -212,11 +285,11 @@ export class Validators extends Utils {
     return <Db[]>proxyedDb;
   };
 
-  private getProxedRoutes = (routes: string[], proxy: Config["proxy"]) => {
-    const proxedRoutes = routes.reduce((result: string[], r: string) => {
-      const proxeRouteEntries = Object.entries(proxy);
-      const patternMatchRoute = proxeRouteEntries.find(([key, val]) => new UrlPattern(key).match(r));
-      const exactMatchRoute = proxeRouteEntries.find(([key, val]) => key === r);
+  private getProxyedRoutes = (routes: string[], proxy: Config["proxy"]) => {
+    const proxyedRoutes = routes.reduce((result: string[], r: string) => {
+      const proxyRouteEntries = Object.entries(proxy);
+      const patternMatchRoute = proxyRouteEntries.find(([key, val]) => new UrlPattern(key).match(r));
+      const exactMatchRoute = proxyRouteEntries.find(([key, val]) => key === r);
 
       if (!_.isEmpty(patternMatchRoute)) {
         try {
@@ -240,9 +313,20 @@ export class Validators extends Utils {
       return result;
     }, []);
 
-    return proxedRoutes;
+    return proxyedRoutes;
   };
 
+  /**
+   * This function helps to transform the db url or object to an db List
+   * @param {string|object} db
+   * @param {array} injectors
+   * @return {object} the valid db list
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.transformJson(db, injectors);
+   * @link https://github.com/R35007/Fake-Response#transformjson - For further info pls visit this ReadMe
+   */
   transformJson = (data: object | string = this.db, injectors: Injectors[] = this.injectors): Db[] => {
     try {
       let valid_data = data;
@@ -287,6 +371,17 @@ export class Validators extends Utils {
     }
   };
 
+  /**
+   * This function helps to transform the harJSon to a simple route and response object
+   * @param {object} harData
+   * @param {array} filters Prove the response types to be filtered
+   * @return {object} the transformed db object
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.transformHar(harData, ["xhr","document"]);
+   * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
+   */
   transformHar = (harData: HAR = <HAR>{}, filters: string[] = []) => {
     try {
       const entries: HarEntry[] = _.get(harData, "log.entries", []);

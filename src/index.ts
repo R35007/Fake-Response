@@ -7,9 +7,21 @@ import * as _ from "lodash";
 import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors } from "./model";
 import { Middlewares } from "./middlewares";
 
-const fs = require("fs"),
-  path = require("path");
-
+const path = require("path");
+/**
+ * Create a Fake Response server instance using this class constructor.
+ * @constructor
+ * @param {string|object|array} db - The db which you would link to generate a routes
+ * @param {object} config - Provide your server configs
+ * @param {object} globals - Provide your global declarations
+ * @param {array} injectors - Provide your injectors to inject any middleware or delay to a particular routes
+ * @example
+ * const {FakeResponse} = require("fake-response");
+ * // validates and sets the Data
+ * const fakeResponse = new FakeResponse(db, config, globals, injectors) // all params are optional
+ * fakeResponse.launchServer() // runs the initialized db
+ * @link https://r35007.github.io/Fake-Response/ - For further info pls visit this ReadMe
+ */
 export class FakeResponse extends Middlewares {
   app: express.Application;
   server: Server;
@@ -27,6 +39,15 @@ export class FakeResponse extends Middlewares {
     super(db, config, globals, injectors);
   }
 
+  /**
+   * This function creates express app, starts the server loads the resources and creates default routes.
+   * @returns {object} express app, server, results, db, config, globals, fullDbData in a object
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * fakeResponse.launchServer() // if not provided anything in the constructor runs the sample db
+   * @link https://r35007.github.io/Fake-Response/#launchserver - For further info pls visit this ReadMe
+   */
   launchServer = async () => {
     try {
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
@@ -51,6 +72,15 @@ export class FakeResponse extends Middlewares {
     }
   };
 
+  /**
+   * This function creates express app with default middlewares.
+   * @returns {object} express app
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * const app = fakeResponse.createExpressApp() // creates and returns the express app.
+   * @link https://r35007.github.io/Fake-Response/#createexpressapp - For further info pls visit this ReadMe
+   */
   createExpressApp = () => {
     if (this.isExpressAppCreated) return this.app;
     this.app = express();
@@ -64,6 +94,18 @@ export class FakeResponse extends Middlewares {
     return this.app;
   };
 
+  /**
+   * This function starts the express server.
+   * Please make sure you create the express app before starting the server
+   * @param {number} port any port number. By  default it takes from config Object
+   * @returns {object} Promise of express http server
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * const app = fakeResponse.createExpressApp()
+   * fakeResponse.startServer(3000) // the port is an optional param
+   * @link https://github.com/R35007/Fake-Response#startserver - For further info pls visit this ReadMe
+   */
   startServer = (port: number = this.config.port): Promise<Server> => {
     if (!this.app) this.createExpressApp();
     if (this.isServerStarted) return Promise.resolve(this.server);
@@ -82,6 +124,15 @@ export class FakeResponse extends Middlewares {
     });
   };
 
+  /**
+   * This function stops the express server
+   * @returns {Boolean} Promise of Boolean
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * const isStopped = fakeResponse.stopServer() // make sure the server is already started
+   * @link https://github.com/R35007/Fake-Response#stopserver - For further info pls visit this ReadMe
+   */
   stopServer = (): Promise<Boolean> => {
     return new Promise((resolve, reject) => {
       this.server
@@ -96,6 +147,15 @@ export class FakeResponse extends Middlewares {
   };
 
   // #region Load Resources
+  /**
+   * This function helps to generate a route before starting the server
+   * @returns {object} Promise of routes success and failure results
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * const result = fakeResponse.loadResources();
+   * @link https://github.com/R35007/Fake-Response#loadresources - For further info pls visit this ReadMe
+   */
   loadResources = async () => {
     try {
       if (!this.app) this.createExpressApp();
@@ -148,6 +208,23 @@ export class FakeResponse extends Middlewares {
     }
   };
 
+  /**
+   * This function helps to create a route explicitly
+   * @param {string|object|array} data - provide your response here 
+   * @param {string} route - provide a new route to generate a local server 
+   * @param {string} [dataType="default"] - provide the data Type of one of the following. "default"|"url"|"file"
+   * @param {function} [middleware] - provide your middleware for this specific route
+   * @param {number} [delay] - provide your delay for this specific route
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * 
+   *const newResponse = {
+        value : "New response"
+   }
+   * fakeResponse.createRoute('/newRoute',newResponse);
+   * @link https://github.com/R35007/Fake-Response#createroute - For further info pls visit this ReadMe
+   */
   createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
     try {
       if (!this.app) this.createExpressApp();
@@ -181,7 +258,20 @@ export class FakeResponse extends Middlewares {
   }
 
   // #endregion Load Resources
-
+  /**
+   * This function helps to create a default route explicitly.
+   * This creates the following routes.
+   * http://localhost:3000/
+   * http://localhost:3000/db
+   * http://localhost:3000/routesList
+   *
+   * Note : The port is assigned from the config
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db)
+   * fakeResponse.createDefaultRoutes()
+   * @link https://github.com/R35007/Fake-Response#createdefaultroutes - For further info pls visit this ReadMe
+   **/
   createDefaultRoutes = () => {
     if (!this.app) this.createExpressApp();
     if (this.isDefaultsCreated) return;
