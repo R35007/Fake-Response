@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import * as _ from "lodash";
+import UrlPattern from "url-pattern";
 import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
 import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, HarEntry, HAR } from "./model";
 import { Utils } from "./utils";
@@ -197,26 +198,49 @@ export class Validators extends Utils {
   };
 
   private getProxyedDb = (db: Db[], proxy) => {
-    const proxyeRoutesVal = Object.entries(proxy).map(([_key, val]) => val);
-    const proxyeRoutes = Object.keys(proxy);
+    const proxyeRouteVals = Object.entries(proxy).map(([_key, val]) => val);
     const proxyedDb = db
       .map((d) => {
-        const routes = this.getValidRoutes(d.routes);
-        const nonProxyRoutes = routes.filter((r) => proxyeRoutesVal.indexOf(r) < 0);
+        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => proxyeRouteVals.indexOf(r) < 0);
         if (nonProxyRoutes.length) {
-          const withProxyRoutes = nonProxyRoutes.reduce((result, r) => {
-            return proxyeRoutes.indexOf(r) >= 0 ? [...result, r, proxy[r]] : [...result, r];
-          }, []);
-          return {
-            ...d,
-            routes: withProxyRoutes,
-          };
+          const routes = this.getProxedRoutes(nonProxyRoutes, proxy);
+          return { ...d, routes };
         }
         return false;
       })
       .filter(Boolean);
-
     return <Db[]>proxyedDb;
+  };
+
+  private getProxedRoutes = (routes: string[], proxy: Config["proxy"]) => {
+    const proxedRoutes = routes.reduce((result: string[], r: string) => {
+      const proxeRouteEntries = Object.entries(proxy);
+      const patternMatchRoute = proxeRouteEntries.find(([key, val]) => new UrlPattern(key).match(r));
+      const exactMatchRoute = proxeRouteEntries.find(([key, val]) => key === r);
+
+      if (!_.isEmpty(patternMatchRoute)) {
+        try {
+          const proxyKeyPattern = new UrlPattern(patternMatchRoute[0]);
+          const proxyValPattern = new UrlPattern(patternMatchRoute[1]);
+
+          const keyMatchedParams = proxyKeyPattern.match(r);
+          if (!_.isEmpty(keyMatchedParams)) {
+            const proxyRouteWithParams = proxyValPattern.stringify(keyMatchedParams);
+            return [...result, r, proxyRouteWithParams];
+          } else {
+            return [...result, r, patternMatchRoute[1]];
+          }
+        } catch {
+          return [...result, r, patternMatchRoute[1]];
+        }
+      } else if (exactMatchRoute) {
+        return [...result, r, exactMatchRoute[1]];
+      }
+
+      return result;
+    }, []);
+
+    return proxedRoutes;
   };
 
   transformJson = (data: object | string = this.db, injectors: Injectors[] = this.injectors): Db[] => {
