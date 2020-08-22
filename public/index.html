@@ -12,6 +12,7 @@
       document.getElementById("loader").style.display = "none";
       setIframeHeader();
     }
+
     function setIframeHeader() {
       const iframesource = document.getElementById("resource-iframe").src;
       const iframeHeader = document.getElementById("iframe-header");
@@ -54,7 +55,10 @@
 
         <div id="resources-container">
           <header>
-            <h2><a href="#resources-container">Resources</a></h2>
+            <h2>
+              <a href="#resources-container">Resources</a>
+              <span id="routes-count"></span>
+            </h2>
             <div>
               <input type="search" id="search" class="search" oninput="filterRoutes()"
                 placeholder="Search resources here" />

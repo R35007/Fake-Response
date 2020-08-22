@@ -321,7 +321,7 @@ const isDuplicateRoute = (route, availableRoutes) => {
     availableRoutes.push(route);
     return false;
   }
-  throw new Error("Duplicate Route");
+  throw new Error(route + " - Duplicate Route");
 };
 
 const defaultRoutesLog = (defaultRoutes, port) => {

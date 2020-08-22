@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1160px;
   margin: auto;
   padding: 1rem;
 }
@@ -100,8 +100,15 @@ ul {
 
 li {
   list-style-type: none;
-  margin-bottom: 0.4rem;
   font-size: 18px;
+  overflow: hidden;
+  padding: 10px;
+  word-break: break-all;
+  padding-right: 20px;
+}
+
+li.active {
+  background: #171717;
 }
 
 code {
@@ -147,7 +154,8 @@ code {
 
 #resources-container .resources-wrapper #resources-list {
   flex: 1;
-  height: calc(100vh - 100px);;
+  height: calc(100vh - 100px);
+  ;
   overflow: auto;
 }
 
@@ -213,10 +221,17 @@ iframe {
   animation: 1s loader-05 linear infinite;
 }
 
+#routes-count {
+  font-size: 16px;
+  margin-left: 5px;
+  color: gray;
+}
+
 @keyframes loader-05 {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }

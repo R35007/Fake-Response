@@ -1,28 +1,39 @@
+let availableRoutesCount = 0;
+let filteredRoutesCount = 0;
+
 function filterRoutes() {
   let input, filter, ul, li, a, i, txtValue;
   input = document.getElementById("search");
   filter = input.value.toUpperCase();
   ul = document.getElementById("resources-list");
   li = ul.getElementsByTagName("li");
-  let isEmpty = true;
+  filteredRoutesCount = 0;
   for (i = 0; i < li.length; i++) {
     a = li[i].getElementsByTagName("a")[0];
     txtValue = a.textContent || a.innerText;
     if (txtValue.toUpperCase().indexOf(filter) > -1) {
       li[i].style.display = "block";
       isEmpty = false;
+      filteredRoutesCount++;
     } else {
       li[i].style.display = "none";
     }
   }
-  if (isEmpty) {
-    NoResources();
-  } else {
+  setRoutesCount(availableRoutesCount, filteredRoutesCount);
+  if (filteredRoutesCount) {
     FoundResources();
+  } else {
+    NoResources();
   }
 }
 
-function setIframe(route) {
+function setIframe(e, route) {
+  const li = document.querySelectorAll("ul#resources-list li");
+  for (let i = 0; i < li.length; i++) {
+    li[i].classList.remove("active");
+  };
+
+  e.parentNode.className = 'active'
   document.getElementById("loader").style.display = "block";
   document.getElementById("resource-iframe").src = route;
 }
@@ -30,17 +41,24 @@ function setIframe(route) {
 function ResourceItem(name) {
   return `
   <li>
-    <a onclick="setIframe('${name}')">${name}</a>
+    <a onclick="setIframe(this,'${name}')">${name}</a>
   </li>
 `;
 }
 
-function ResourceList({ db }) {
+function ResourceList({
+  db
+}) {
   const defaultRoutes = ["/db", "/routesList"].filter((r) => Object.keys(db).indexOf(r) < 0);
   document.getElementById("resource-iframe").src = Object.keys(db)[0];
+
+  const availableRoutes = [...Object.keys(db), ...defaultRoutes];
+  availableRoutesCount = availableRoutes.length;
+  filteredRoutesCount = availableRoutes.length;
+  setRoutesCount(availableRoutesCount, filteredRoutesCount);
   return `
   <ul id="resources-list">
-    ${[...Object.keys(db), ...defaultRoutes].map((name) => ResourceItem(name)).join("")}
+    ${availableRoutes.map((name) => ResourceItem(name)).join("")}
   </ul>
 `;
 }
@@ -59,11 +77,25 @@ function FoundResources() {
   return "";
 }
 
-function ResourcesBlock({ db }) {
-  return Object.keys(db).length ? ResourceList({ db }) : NoResources();
+function setRoutesCount(availableRoutesCount, filteredRoutesCount) {
+
+  const countsString = availableRoutesCount === filteredRoutesCount ?
+    availableRoutesCount : `${filteredRoutesCount} / ${availableRoutesCount}`
+
+  document.getElementById("routes-count").innerHTML = countsString;
+}
+
+function ResourcesBlock({
+  db
+}) {
+  return Object.keys(db).length ? ResourceList({
+    db
+  }) : NoResources();
 }
 
 window
   .fetch("db")
   .then((response) => response.json())
-  .then((db) => (document.getElementById("resources-list").innerHTML += ResourcesBlock({ db })));
+  .then((db) => (document.getElementById("resources-list").innerHTML += ResourcesBlock({
+    db
+  })));

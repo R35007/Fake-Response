@@ -224,6 +224,7 @@ export class Validators extends Utils {
 
       let valid_Db = <Db[]>db;
       const proxy = this.config.proxy;
+      const excludeRoutes = this.config.excludeRoutes;
       const valid_injector = this.getValidInjectors(injectors);
 
       if (!_.isEmpty(proxy) && _.isPlainObject(proxy)) {
@@ -238,9 +239,11 @@ export class Validators extends Utils {
           const { data, dataType, routes, middlewares, delays, env } = obj;
 
           const valid_routes = this.getValidRoutes(routes);
-          valid_obj.routes = valid_routes.filter((r) => this.config.excludeRoutes.indexOf(r) < 0);
+          valid_obj.routes = valid_routes.filter(
+            (r) => excludeRoutes.every((e) => _.isEmpty(new UrlPattern(e).match(r))) && excludeRoutes.indexOf(r) < 0
+          );
 
-          if (valid_obj.routes && valid_obj.routes.length > 0) {
+          if (valid_obj.routes && valid_obj.routes.length) {
             valid_obj._d_index = i;
             valid_obj.dataType = <DataType>this.getValidDataType(dataType);
             valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
@@ -309,8 +312,7 @@ export class Validators extends Utils {
       } else if (exactMatchRoute) {
         return [...result, r, exactMatchRoute[1]];
       }
-
-      return result;
+      return [...result, r];
     }, []);
 
     return proxyedRoutes;
