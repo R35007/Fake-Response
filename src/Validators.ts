@@ -274,18 +274,37 @@ export class Validators extends Utils {
   };
 
   private getProxyedDb = (db: Db[], proxy) => {
-    const proxyRouteVals = Object.entries(proxy).map(([_key, val]) => val);
+    const availableProxy = this.getAvailableProxy(db, proxy);
+    const availableProxyRoutes = Object.entries(availableProxy).map(([key, val]) => val);
+
     const proxyedDb = db
       .map((d) => {
-        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => proxyRouteVals.indexOf(r) < 0);
+        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => availableProxyRoutes.indexOf(r) < 0);
         if (nonProxyRoutes.length) {
-          const routes = this.getProxyedRoutes(nonProxyRoutes, proxy);
+          const routes = this.getProxyedRoutes(nonProxyRoutes, availableProxy);
           return { ...d, routes };
         }
         return false;
       })
       .filter(Boolean);
     return <Db[]>proxyedDb;
+  };
+
+  private getAvailableProxy = (db, proxy) => {
+    const proxyRouteEntries = Object.entries(proxy);
+    const availableRoutes = this.getValidRoutes(_.flatten(db.map((d) => d.routes)));
+
+    const availableProxy = proxyRouteEntries.reduce((result, [key, val]: [string, string]) => {
+      const isPatternMatched = availableRoutes.some((ar: string) => new UrlPattern(key).match(ar));
+      const isExactMatched = availableRoutes.indexOf(key) >= 0;
+
+      if (isPatternMatched || isExactMatched) {
+        return { ...result, [key]: val };
+      }
+      return result;
+    }, {});
+
+    return availableProxy;
   };
 
   private getProxyedRoutes = (routes: string[], proxy: Config["proxy"]) => {
