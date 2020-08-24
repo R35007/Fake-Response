@@ -11,6 +11,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 - [How To Use](#how-to-use)
   - [Default Config](#default-config)
   - [Proxy](#proxy)
+  - [Exclude Routes](#excluderoutes)
   - [Globals](#globals)
   - [Injectors](#injectors)
   - [Sharing between Routes](#sharing-between-routes)
@@ -118,8 +119,14 @@ const config: Config = {
     override : false // if true overrides the specific delay with the common delay
   },
   env : "",
-  proxy : {}
-  excludeRoutes : []
+  proxy: {
+    patternMatch: {},
+    exactMatch: {},
+  },
+  excludeRoutes: {
+    patternMatch: [],
+    exactMatch: [],
+  },
 };
 ```
 
@@ -161,22 +168,57 @@ const { FakeResponse } = require("fake-response");
 
 const db = {
   hello: "Hello World",
+  "parent/foo/1": "foo 1",
+  "parent/foo/2": "foo 2",
 };
 
 const config = {
   proxy: {
-    hello: "helloWorld",
+    exactMatch: {
+      hello: "helloWorld",
+    },
+    patternMatch: {
+      "parent/:child/:id": "myRoute/:child/:id", // generate route along with matched params
+    },
   },
 };
 
 new FakeResponse(db, config).launchServer();
 ```
 
-Now if you go to [http://localhost:3000/helloWorld](http://localhost:3000/helloWorld), you'll get
+Now go to [http://localhost:3000/helloWorld](http://localhost:3000/helloWorld), you'll get
 
 ```text
 Hello World
 ```
+
+Now go to [http://localhost:3000/myRoute/foo/2](http://localhost:3000/myRoute/foo/2), you'll get
+
+```text
+foo 2
+```
+
+### Exclude Route
+
+You can also exclude routes using config. For example:
+
+````js
+const { FakeResponse } = require("fake-response");
+
+const db = {
+  hello: "Hello World",
+  "parent/foo/1": "foo 1",
+  "parent/foo/2": "foo 2",
+};
+
+const config = {
+  excludeRoutes: {
+    exactMatch: ["hello"] // removes routes that exactly match this pattern
+    patternMatch: ["parent/:child/:id"] // removes every routes that matched this pattern
+  },
+};
+
+new Fa
 
 ### Globals
 
@@ -204,7 +246,7 @@ const globals = {
 };
 
 new FakeResponse(db, config, globals).launchServer(); // second param use the default configs
-```
+````
 
 Now you get a different response for each request.
 

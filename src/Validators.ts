@@ -13,8 +13,6 @@ const default_config: Config = {
   port: 3000,
   rootPath: "./",
   env: "",
-  excludeRoutes: [],
-  proxy: {},
   middleware: {
     func: ({ next }) => {
       next();
@@ -26,6 +24,14 @@ const default_config: Config = {
     time: 0,
     excludeRoutes: [],
     override: false,
+  },
+  proxy: {
+    patternMatch: {},
+    exactMatch: {},
+  },
+  excludeRoutes: {
+    patternMatch: [],
+    exactMatch: [],
   },
 };
 
@@ -118,12 +124,24 @@ export class Validators extends Utils {
       const { port, rootPath, excludeRoutes, middleware, delay, proxy } = default_config;
       const valid_Config = { ...config };
 
+      const erPatternMatch = _.get(config, "excludeRoutes.patternMatch", []);
+      const erExactMatch = _.get(config, "excludeRoutes.exactMatch", []);
+
+      const prPatternMatch = _.get(config, "proxy.patternMatch", {});
+      const prExactMatch = _.get(config, "proxy.exactMatch", {});
+
       valid_Config.port = !_.isEmpty(config.port) && !_.isObject(config.port) ? _.toInteger(config.port) : port;
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
-      valid_Config.excludeRoutes = _.isArray(config.excludeRoutes) ? config.excludeRoutes.map(this.getValidRoute) : excludeRoutes;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
-      valid_Config.proxy = _.isPlainObject(config.proxy) ? this.getValidProxy(config.proxy) : proxy;
+      valid_Config.excludeRoutes = {
+        patternMatch: _.isArray(erPatternMatch) ? erPatternMatch.map(this.getValidRoute) : excludeRoutes.patternMatch,
+        exactMatch: _.isArray(erExactMatch) ? erExactMatch.map(this.getValidRoute) : excludeRoutes.exactMatch,
+      };
+      valid_Config.proxy = {
+        patternMatch: _.isPlainObject(prPatternMatch) ? this.getValidProxy(prPatternMatch) : proxy.patternMatch,
+        exactMatch: _.isPlainObject(prExactMatch) ? this.getValidProxy(prExactMatch) : proxy.exactMatch,
+      };
 
       return valid_Config;
     } catch (err) {
@@ -227,11 +245,21 @@ export class Validators extends Utils {
       const excludeRoutes = this.config.excludeRoutes;
       const valid_injector = this.getValidInjectors(injectors);
 
-      if (!_.isEmpty(proxy) && _.isPlainObject(proxy)) {
-        valid_Db = this.getProxyedDb(valid_Db, proxy);
+      if (!_.isEmpty(proxy.patternMatch) || !_.isEmpty(proxy.exactMatch)) {
+        valid_Db = this.getProxyedDb(valid_Db, proxy.patternMatch, proxy.exactMatch);
       }
 
+      const routesList = _.flatten(valid_Db.map((db) => this.getValidRoutes(db.routes)));
+
+      const exactExcludeRoutes = routesList.filter((r) => excludeRoutes.exactMatch.indexOf(r) >= 0);
+      const patternExcludeRoutes = routesList.filter((r) => excludeRoutes.patternMatch.some((pe) => !_.isEmpty(new UrlPattern(pe).match(r))));
+
+      const excludeRoutesList = [...exactExcludeRoutes, ...patternExcludeRoutes];
+
+      let availableRoutes = [];
+
       valid_Db = <Db[]>valid_Db
+        .reverse()
         .map((obj, i) => {
           if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
@@ -239,11 +267,10 @@ export class Validators extends Utils {
           const { data, dataType, routes, middlewares, delays, env } = obj;
 
           const valid_routes = this.getValidRoutes(routes);
-          valid_obj.routes = valid_routes.filter(
-            (r) => excludeRoutes.every((e) => _.isEmpty(new UrlPattern(e).match(r))) && excludeRoutes.indexOf(r) < 0
-          );
+          valid_obj.routes = valid_routes.filter((r) => excludeRoutesList.indexOf(r) < 0 && availableRoutes.indexOf(r) < 0);
 
           if (valid_obj.routes && valid_obj.routes.length) {
+            availableRoutes = [...availableRoutes, ...valid_obj.routes];
             valid_obj._d_index = i;
             valid_obj.dataType = <DataType>this.getValidDataType(dataType);
             valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
@@ -263,7 +290,8 @@ export class Validators extends Utils {
             return false;
           }
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .reverse();
 
       const sorted_db = _.sortBy(valid_Db, ["dataType"]);
       return sorted_db;
@@ -273,68 +301,62 @@ export class Validators extends Utils {
     }
   };
 
-  private getProxyedDb = (db: Db[], proxy) => {
-    const availableProxy = this.getAvailableProxy(db, proxy);
-    const availableProxyRoutes = Object.entries(availableProxy).map(([key, val]) => val);
-
+  private getProxyedDb = (db: Db[], patternMatch, exactMatch) => {
     const proxyedDb = db
       .map((d) => {
-        const nonProxyRoutes = this.getValidRoutes(d.routes).filter((r) => availableProxyRoutes.indexOf(r) < 0);
-        if (nonProxyRoutes.length) {
-          const routes = this.getProxyedRoutes(nonProxyRoutes, availableProxy);
-          return { ...d, routes };
-        }
-        return false;
+        const routes = this.getProxyedRoutes(d.routes, patternMatch, exactMatch);
+        return routes.length ? { ...d, routes } : false;
       })
       .filter(Boolean);
     return <Db[]>proxyedDb;
   };
 
-  private getAvailableProxy = (db, proxy) => {
-    const proxyRouteEntries = Object.entries(proxy);
-    const availableRoutes = this.getValidRoutes(_.flatten(db.map((d) => d.routes)));
+  private getProxyedRoutes = (routes: string | string[], patternMatch, exactMatch) => {
+    const valid_routes = this.getValidRoutes(routes);
 
-    const availableProxy = proxyRouteEntries.reduce((result, [key, val]: [string, string]) => {
-      const isPatternMatched = availableRoutes.some((ar: string) => new UrlPattern(key).match(ar));
-      const isExactMatched = availableRoutes.indexOf(key) >= 0;
+    const patternMatchEntries = <[string, string][]>Object.entries(patternMatch);
+    const exactMatchEntries = <[string, string][]>Object.entries(exactMatch);
 
-      if (isPatternMatched || isExactMatched) {
-        return { ...result, [key]: val };
-      }
-      return result;
-    }, {});
+    const patternMatchedRoutes = patternMatchEntries.length > 0 ? this.getPatternRoutes(valid_routes, patternMatchEntries) : [];
+    const exactMatchedRoutes = exactMatchEntries.length > 0 ? this.getExactRoutes(valid_routes, exactMatchEntries) : [];
 
-    return availableProxy;
+    const flattenRoutes = _.flatten([...patternMatchedRoutes, ...exactMatchedRoutes]);
+    const uniqRoutes = _.uniq(flattenRoutes);
+    const valid_uniq_routes = this.getValidRoutes(uniqRoutes);
+    return valid_uniq_routes;
   };
 
-  private getProxyedRoutes = (routes: string[], proxy: Config["proxy"]) => {
-    const proxyedRoutes = routes.reduce((result: string[], r: string) => {
-      const proxyRouteEntries = Object.entries(proxy);
-      const patternMatchRoute = proxyRouteEntries.find(([key, val]) => new UrlPattern(key).match(r));
-      const exactMatchRoute = proxyRouteEntries.find(([key, val]) => key === r);
-
-      if (!_.isEmpty(patternMatchRoute)) {
-        try {
-          const proxyKeyPattern = new UrlPattern(patternMatchRoute[0]);
-          const proxyValPattern = new UrlPattern(patternMatchRoute[1]);
-
-          const keyMatchedParams = proxyKeyPattern.match(r);
-          if (!_.isEmpty(keyMatchedParams)) {
-            const proxyRouteWithParams = proxyValPattern.stringify(keyMatchedParams);
-            return [...result, r, proxyRouteWithParams];
-          } else {
-            return [...result, r, patternMatchRoute[1]];
-          }
-        } catch {
-          return [...result, r, patternMatchRoute[1]];
-        }
-      } else if (exactMatchRoute) {
-        return [...result, r, exactMatchRoute[1]];
-      }
-      return [...result, r];
+  private getPatternRoutes = (routes: string[], patternMatchEntries: [string, string][]) => {
+    const patternRoutes = routes.reduce((result: string[], r: string) => {
+      const patternRoute = patternMatchEntries.reduce((pr, [key, val]) => [...pr, ...this.getPatternRoute(key, val, r)], []);
+      return patternRoute.length ? [...result, ...patternRoute] : [...result, r];
     }, []);
 
-    return proxyedRoutes;
+    return patternRoutes;
+  };
+
+  private getPatternRoute = (key: string, val: string, route: string) => {
+    try {
+      const matchedResult = new UrlPattern(key).match(route);
+
+      if (!_.isEmpty(matchedResult)) {
+        const proxyValPattern = new UrlPattern(val);
+        const proxyRouteWithParams = proxyValPattern.stringify(matchedResult);
+        return [route, proxyRouteWithParams];
+      }
+      return [route];
+    } catch {
+      return [route, val];
+    }
+  };
+
+  private getExactRoutes = (routes: string[], exactMatchEntries: [string, string][]) => {
+    const exactMatchRoutes = routes.reduce((result: string[], r: string) => {
+      const exactMatchRoute = exactMatchEntries.reduce((er, [key, val]) => (key === r ? [...er, r, val] : [...er, r]), []);
+      return exactMatchRoute.length ? [...result, exactMatchRoute] : [...result, r];
+    }, []);
+
+    return exactMatchRoutes;
   };
 
   /**
@@ -364,9 +386,8 @@ export class Validators extends Utils {
       if (_.isPlainObject(valid_data)) {
         valid_data = <Object>valid_data;
         const ENV = this.config.env;
-        //removes all dev routes and contains only env routes;
         if (!_.isEmpty(ENV) && !_.isEmpty(valid_data[ENV])) {
-          valid_data = this.getOnlyEnvData(valid_data, valid_data[ENV]);
+          valid_data = { ...valid_data, ...valid_data[ENV] };
           delete valid_data[ENV];
         }
 
@@ -431,19 +452,6 @@ export class Validators extends Utils {
     } catch (err) {
       console.error(chalk.red(err.message));
     }
-  };
-
-  private getOnlyEnvData = (devData, envData) => {
-    const envDataRoutes = Object.keys(envData).reduce((res, key) => [...res, ...key.split(",")], []);
-    const validEnvRoutes = this.getValidRoutes(_.flatten(envDataRoutes));
-
-    const nonDevData = Object.entries(devData).reduce((res, [key, val]) => {
-      const routes = this.getValidRoutes(key.split(","));
-      const nonEnvRoutes = routes.filter((r) => validEnvRoutes.indexOf(r) < 0);
-      return nonEnvRoutes.length ? { ...res, [nonEnvRoutes.join(",")]: val } : res;
-    }, {});
-
-    return { ...nonDevData, ...envData };
   };
 
   isValidURL = (str: string) => {

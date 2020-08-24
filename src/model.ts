@@ -28,12 +28,20 @@ export interface Config {
   port?: number;
   rootPath?: string;
   env?: string;
-  proxy?: {
-    [key: string]: string;
-  };
-  excludeRoutes?: string[];
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
+  proxy?: {
+    patternMatch?: {
+      [key: string]: string;
+    };
+    exactMatch?: {
+      [key: string]: string;
+    };
+  };
+  excludeRoutes?: {
+    patternMatch?: string[];
+    exactMatch?: string[];
+  };
 }
 
 export interface ConfigMiddleware extends middlewareAndDelayCommon {
