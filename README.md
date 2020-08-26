@@ -39,6 +39,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [getData](#getdata)
   - [transformJson](#transformjson)
   - [transformHar](#transformhar)
+  - [filterBySchema](#filterbyschema)
 - [Author](#author)
 - [License](#license)
 
@@ -852,6 +853,39 @@ fakeResponse.launchServer();
 | ------- | ------ | -------- | ------- | ------------------------------------------ |
 | harData | object | No       | {}      | This object generates the local rest api.  |
 | filters | object | No       | []      | Provide your response types to be filtered |
+
+### filterBySchema
+
+This method helps to filter properties only which are required using schema.
+
+```js
+const {FakeResponse} = require("fake-response");
+const fakeResponse = new FakeResponse()
+const data = {
+ name : foo,
+ likes : ["xxx","yyy"],
+ address:[{
+   "city":"bar",
+   "state":"TN",
+   "country":"India"
+ }]
+};
+
+const schema:{
+ name:true,
+ address:{
+   city:true
+ }
+}
+const db = fakeResponse.filterBySchema(data, schema);
+```
+
+**`Params`**
+
+| Name   | Type   | Required | Default | Description                     |
+| ------ | ------ | -------- | ------- | ------------------------------- |
+| data   | any    | No       | {}      | Object to filter props          |
+| schema | object | No       | []      | Provide your schema to filtered |
 
 ## Author
 

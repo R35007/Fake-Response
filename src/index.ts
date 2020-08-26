@@ -10,11 +10,6 @@ import { Middlewares } from "./middlewares";
 const path = require("path");
 /**
  * Create a Fake Response server instance using this class constructor.
- * @constructor
- * @param {string|object|array} db - The db which you would link to generate a routes
- * @param {object} config - Provide your server configs
- * @param {object} globals - Provide your global declarations
- * @param {array} injectors - Provide your injectors to inject any middleware or delay to a particular routes
  * @example
  * const {FakeResponse} = require("fake-response");
  * // validates and sets the Data
@@ -41,7 +36,6 @@ export class FakeResponse extends Middlewares {
 
   /**
    * This function creates express app, starts the server loads the resources and creates default routes.
-   * @returns {object} express app, server, results, db, config, globals, fullDbData in a object
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -74,7 +68,6 @@ export class FakeResponse extends Middlewares {
 
   /**
    * This function creates express app with default middlewares.
-   * @returns {object} express app
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse(db)
@@ -97,8 +90,6 @@ export class FakeResponse extends Middlewares {
   /**
    * This function starts the express server.
    * Please make sure you create the express app before starting the server
-   * @param {number} port any port number. By  default it takes from config Object
-   * @returns {object} Promise of express http server
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse(db)
@@ -126,7 +117,6 @@ export class FakeResponse extends Middlewares {
 
   /**
    * This function stops the express server
-   * @returns {Boolean} Promise of Boolean
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse(db)
@@ -149,7 +139,6 @@ export class FakeResponse extends Middlewares {
   // #region Load Resources
   /**
    * This function helps to generate a route before starting the server
-   * @returns {object} Promise of routes success and failure results
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse(db)
@@ -210,11 +199,6 @@ export class FakeResponse extends Middlewares {
 
   /**
    * This function helps to create a route explicitly
-   * @param {string|object|array} data - provide your response here 
-   * @param {string} route - provide a new route to generate a local server 
-   * @param {string} [dataType="default"] - provide the data Type of one of the following. "default"|"url"|"file"
-   * @param {function} [middleware] - provide your middleware for this specific route
-   * @param {number} [delay] - provide your delay for this specific route
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse(db)

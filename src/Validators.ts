@@ -59,10 +59,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and sets the Data explicitly
-   * @param {string|object|array} db - The db which you would link to generate a routes
-   * @param {object} config - Provide your server configs
-   * @param {object} globals - Provide your global declarations
-   * @param {array} injectors - Provide your injectors to inject any middleware or delay to a particular routes
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -88,7 +84,6 @@ export class Validators extends Utils {
 
   /**
    * This function helps to get initialized data
-   * @return {object} the current valid db, config, globals, injectors
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -106,8 +101,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and returns the config object
-   * @param {object} config
-   * @return {object} the valid config
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -152,8 +145,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and returns the globals object
-   * @param {object} globals
-   * @return {object} the valid globals
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -170,8 +161,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and returns the injectors object
-   * @param {object} injectors
-   * @return {array} the valid injectors
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -200,9 +189,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and returns the db List
-   * @param {object | string | array} db
-   * @param {array} injectors
-   * @return {array} the valid db
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -226,9 +212,6 @@ export class Validators extends Utils {
 
   /**
    * This function validates and returns the db List
-   * @param {array} db
-   * @param {array} injectors
-   * @return {array} the valid db
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -361,9 +344,6 @@ export class Validators extends Utils {
 
   /**
    * This function helps to transform the db url or object to an db List
-   * @param {string|object} db
-   * @param {array} injectors
-   * @return {object} the valid db list
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -415,9 +395,6 @@ export class Validators extends Utils {
 
   /**
    * This function helps to transform the harJSon to a simple route and response object
-   * @param {object} harData
-   * @param {array} filters Prove the response types to be filtered
-   * @return {object} the transformed db object
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
@@ -452,6 +429,59 @@ export class Validators extends Utils {
     } catch (err) {
       console.error(chalk.red(err.message));
     }
+  };
+
+  /**
+   * This function helps to filter only those properties which are required using schema
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const data = {
+   *  name : foo,
+   *  likes : ["xxx","yyy"],
+   *  address:[{
+   *    "city":"bar",
+   *    "state":"TN",
+   *    "country":"India"
+   *  }]
+   * };
+   *
+   * const schema:{
+   *  name:true,
+   *  address:{
+   *    city:true
+   *  }
+   * }
+   * const db = fakeResponse.filterBySchema(data, schema);
+   * @link https://github.com/R35007/Fake-Response#filterbyschema - For further info pls visit this ReadMe
+   */
+  filterBySchema = (data: any = {}, schema: object = {}) => {
+    if (_.isPlainObject(data)) {
+      const filteredObj = Object.entries(data).reduce((result, [key, val]) => {
+        const schemaKeys = Object.keys(schema);
+        if (schemaKeys.indexOf(key) >= 0) {
+          if (_.isPlainObject(schema[key])) {
+            if (_.isPlainObject(val)) {
+              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+            } else if (_.isArray(val)) {
+              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+            } else {
+              return result;
+            }
+          } else if (schema[key] === true) {
+            return { ...result, [key]: val };
+          }
+          return result;
+        }
+        return result;
+      }, {});
+
+      return filteredObj;
+    } else if (_.isArray(data)) {
+      const filteredArray = data.map((j) => this.filterBySchema(j, schema)).filter((fa) => !_.isEmpty(fa));
+      return filteredArray.length ? filteredArray : [];
+    }
+    return data;
   };
 
   isValidURL = (str: string) => {
