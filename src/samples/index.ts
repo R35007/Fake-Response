@@ -35,6 +35,14 @@ export const sample_db: Db[] = [
     middlewares: responseSequence,
   },
   {
+    env: {
+      prod: "This is a prod env response",
+      anyUserDefinedEnv: "Any other response",
+    },
+    data: "this is a default response. its changes as per the config env",
+    routes: ["env"],
+  },
+  {
     routes: "getResponse",
     middlewares: [getSharedResponse], // returns the query params from `/shareResponse` route
   },
@@ -58,21 +66,10 @@ export const sample_db: Db[] = [
     routes: "injector",
   },
   {
-    data: "./users.json",
+    data: "./users.json", // is relative to the rootPath in config
     dataType: "file",
-    middlewares: queryUser,
-    routes: ["queryUser/:id"],
-  },
-  {
-    data: path.resolve(__dirname, "../../assets/users.json"),
-    dataType: "file",
-    routes: ["/json"],
-    middlewares: getJsonData,
-  },
-  {
-    data: "./article.txt", // is relative to the rootPath in config
-    dataType: "file",
-    routes: ["/txt"],
+    routes: ["/json", "queryUser/:id"],
+    middlewares: [getJsonData, queryUser],
   },
   {
     data: "https://jsonplaceholder.typicode.com/posts/:id/comments",
@@ -92,11 +89,16 @@ export const sample_db: Db[] = [
     dataType: "url",
     routes: ["/comments/:id"],
   },
+  {
+    data: "This routes are proxy routes",
+    routes: ["dummy/1", "dummy/2", "dummy/1/2"],
+  },
 ];
 
 export const sample_config: Config = {
   port: 3000,
-  rootPath: path.resolve(__dirname, "../../assets"),
+  env: "prod", // empty by default
+  rootPath: path.resolve(__dirname, "../../public"),
   middleware: {
     func: commonMiddleware,
     excludeRoutes: [],
@@ -104,6 +106,19 @@ export const sample_config: Config = {
   delay: {
     time: 200, // must be in milliseconds
     excludeRoutes: ["hello", "world", "url", "json", "txt"],
+  },
+  proxy: {
+    exactMatch: {
+      "dummy/2": "proxy/2",
+    },
+    patternMatch: {
+      "dummy/:child/:id": "proxy/:child/:id",
+    },
+  },
+  // Note : First it applies proxy and then it excludes routes
+  excludeRoutes: {
+    exactMatch: ["dummy/1/2"], // excludes routes with exact match
+    patternMatch: ["dummy/:id"], // excludes every routes that matches this pattern
   },
 };
 
