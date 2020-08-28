@@ -41,6 +41,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [transformJson](#transformjson)
   - [transformHar](#transformhar)
   - [filterBySchema](#filterbyschema)
+  - [getMockJSON](#getmockjson)
 - [Author](#author)
 - [License](#license)
 
@@ -910,6 +911,14 @@ const db = fakeResponse.filterBySchema(data, schema);
 | ------ | ------ | -------- | ------- | ------------------------------- |
 | data   | any    | No       | {}      | Object to filter props          |
 | schema | object | No       | []      | Provide your schema to filtered |
+
+### getMockJSON
+
+return the current db in a json format
+
+```js
+const mock = fakeResponse.getMockJSON();
+```
 
 ## Author
 

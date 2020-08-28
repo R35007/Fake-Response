@@ -99,6 +99,27 @@ export class Validators extends Utils {
   };
 
   /**
+   * This function give the the final mock generation with groupings, proxy, excludeRoutes
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db, config)
+   * const mock = fakeResponse.getMockJSON();
+   * @link https://github.com/R35007/Fake-Response#getmockjson - For further info pls visit this ReadMe
+   */
+  getMockJSON = () => {
+    const db = <Db[]>this.db;
+    const mock = db.reduce((res, d) => {
+      const routes = <string[]>d.routes;
+      const obj = {
+        [routes.join(",")]: d.data,
+      };
+      return { ...res, ...obj };
+    }, {});
+
+    return mock;
+  };
+
+  /**
    * This function validates and returns the config object
    * @example
    * const {FakeResponse} = require("fake-response");
