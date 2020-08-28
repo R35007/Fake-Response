@@ -30,6 +30,9 @@ export interface Config {
   env?: string;
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
+  groupings?: {
+    [key: string]: string;
+  };
   proxy?: {
     patternMatch?: {
       [key: string]: string;

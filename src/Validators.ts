@@ -1,7 +1,6 @@
 import chalk from "chalk";
 import * as _ from "lodash";
 import UrlPattern from "url-pattern";
-import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
 import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, HarEntry, HAR } from "./model";
 import { Utils } from "./utils";
 
@@ -25,6 +24,7 @@ const default_config: Config = {
     excludeRoutes: [],
     override: false,
   },
+  groupings: {},
   proxy: {
     patternMatch: {},
     exactMatch: {},
@@ -35,9 +35,12 @@ const default_config: Config = {
   },
 };
 
-const default_db: UserDB = {
-  helloWorld: "hello World",
-};
+const default_db: Db[] = [
+  {
+    data: "Hello World",
+    routes: ["hello"],
+  },
+];
 
 const default_globals: Globals = {};
 
@@ -48,13 +51,9 @@ export class Validators extends Utils {
 
   constructor(protected db?: UserDB, protected config?: Config, protected globals?: Globals, protected injectors?: Injectors[]) {
     super();
-    if (!db && !config && !globals && !injectors) {
-      db = sample_db;
-      config = sample_config;
-      globals = sample_globals;
-      injectors = sample_injectors;
+    if (!(!db && !config && !globals && !injectors)) {
+      this.setData(db, config, globals, injectors);
     }
-    this.setData(db, config, globals, injectors);
   }
 
   /**
@@ -114,7 +113,7 @@ export class Validators extends Utils {
     }
 
     try {
-      const { port, rootPath, excludeRoutes, middleware, delay, proxy } = default_config;
+      const { port, rootPath, middleware, delay, groupings, proxy, excludeRoutes } = default_config;
       const valid_Config = { ...config };
 
       const erPatternMatch = _.get(config, "excludeRoutes.patternMatch", []);
@@ -127,13 +126,14 @@ export class Validators extends Utils {
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
+      valid_Config.groupings = _.isPlainObject(config.groupings) ? this.getValidRouteMatch(config.groupings) : groupings;
       valid_Config.excludeRoutes = {
         patternMatch: _.isArray(erPatternMatch) ? erPatternMatch.map(this.getValidRoute) : excludeRoutes.patternMatch,
         exactMatch: _.isArray(erExactMatch) ? erExactMatch.map(this.getValidRoute) : excludeRoutes.exactMatch,
       };
       valid_Config.proxy = {
-        patternMatch: _.isPlainObject(prPatternMatch) ? this.getValidProxy(prPatternMatch) : proxy.patternMatch,
-        exactMatch: _.isPlainObject(prExactMatch) ? this.getValidProxy(prExactMatch) : proxy.exactMatch,
+        patternMatch: _.isPlainObject(prPatternMatch) ? this.getValidRouteMatch(prPatternMatch) : proxy.patternMatch,
+        exactMatch: _.isPlainObject(prExactMatch) ? this.getValidRouteMatch(prExactMatch) : proxy.exactMatch,
       };
 
       return valid_Config;
@@ -206,7 +206,7 @@ export class Validators extends Utils {
     } else if (_.isArray(db)) {
       return this.getValidDbList(db, injectors);
     } else {
-      return sample_db;
+      return default_db;
     }
   };
 
@@ -227,6 +227,10 @@ export class Validators extends Utils {
       const proxy = this.config.proxy;
       const excludeRoutes = this.config.excludeRoutes;
       const valid_injector = this.getValidInjectors(injectors);
+
+      if (!_.isEmpty(this.config.groupings)) {
+        valid_Db = [...valid_Db, ...this.getGroupedDbList(valid_Db, this.config.groupings)];
+      }
 
       if (!_.isEmpty(proxy.patternMatch) || !_.isEmpty(proxy.exactMatch)) {
         valid_Db = this.getProxyedDb(valid_Db, proxy.patternMatch, proxy.exactMatch);
@@ -282,64 +286,6 @@ export class Validators extends Utils {
       this.isValidated = false;
       console.error(chalk.red(err.message));
     }
-  };
-
-  private getProxyedDb = (db: Db[], patternMatch, exactMatch) => {
-    const proxyedDb = db
-      .map((d) => {
-        const routes = this.getProxyedRoutes(d.routes, patternMatch, exactMatch);
-        return routes.length ? { ...d, routes } : false;
-      })
-      .filter(Boolean);
-    return <Db[]>proxyedDb;
-  };
-
-  private getProxyedRoutes = (routes: string | string[], patternMatch, exactMatch) => {
-    const valid_routes = this.getValidRoutes(routes);
-
-    const patternMatchEntries = <[string, string][]>Object.entries(patternMatch);
-    const exactMatchEntries = <[string, string][]>Object.entries(exactMatch);
-
-    const patternMatchedRoutes = patternMatchEntries.length > 0 ? this.getPatternRoutes(valid_routes, patternMatchEntries) : [];
-    const exactMatchedRoutes = exactMatchEntries.length > 0 ? this.getExactRoutes(valid_routes, exactMatchEntries) : [];
-
-    const flattenRoutes = _.flatten([...patternMatchedRoutes, ...exactMatchedRoutes]);
-    const uniqRoutes = _.uniq(flattenRoutes);
-    const valid_uniq_routes = this.getValidRoutes(uniqRoutes);
-    return valid_uniq_routes;
-  };
-
-  private getPatternRoutes = (routes: string[], patternMatchEntries: [string, string][]) => {
-    const patternRoutes = routes.reduce((result: string[], r: string) => {
-      const patternRoute = patternMatchEntries.reduce((pr, [key, val]) => [...pr, ...this.getPatternRoute(key, val, r)], []);
-      return patternRoute.length ? [...result, ...patternRoute] : [...result, r];
-    }, []);
-
-    return patternRoutes;
-  };
-
-  private getPatternRoute = (key: string, val: string, route: string) => {
-    try {
-      const matchedResult = new UrlPattern(key).match(route);
-
-      if (!_.isEmpty(matchedResult)) {
-        const proxyValPattern = new UrlPattern(val);
-        const proxyRouteWithParams = proxyValPattern.stringify(matchedResult);
-        return [route, proxyRouteWithParams];
-      }
-      return [route];
-    } catch {
-      return [route, val];
-    }
-  };
-
-  private getExactRoutes = (routes: string[], exactMatchEntries: [string, string][]) => {
-    const exactMatchRoutes = routes.reduce((result: string[], r: string) => {
-      const exactMatchRoute = exactMatchEntries.reduce((er, [key, val]) => (key === r ? [...er, r, val] : [...er, r]), []);
-      return exactMatchRoute.length ? [...result, exactMatchRoute] : [...result, r];
-    }, []);
-
-    return exactMatchRoutes;
   };
 
   /**
@@ -437,7 +383,7 @@ export class Validators extends Utils {
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
    * const data = {
-   *  name : foo,
+   *  name : "foo",
    *  likes : ["xxx","yyy"],
    *  address:[{
    *    "city":"bar",
@@ -446,7 +392,7 @@ export class Validators extends Utils {
    *  }]
    * };
    *
-   * const schema:{
+   * const schema ={
    *  name:true,
    *  address:{
    *    city:true

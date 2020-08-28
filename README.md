@@ -10,6 +10,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
 - [Advantages](#advantages)
 - [How To Use](#how-to-use)
   - [Default Config](#default-config)
+  - [Groupings](#groupings)
   - [Proxy](#proxy)
   - [Exclude Routes](#excluderoutes)
   - [Globals](#globals)
@@ -120,6 +121,7 @@ const config: Config = {
     override : false // if true overrides the specific delay with the common delay
   },
   env : "",
+  groupings :{},
   proxy: {
     patternMatch: {},
     exactMatch: {},
@@ -159,6 +161,46 @@ const config = {
 
 new FakeResponse(db,config).launchServer();
 ```
+
+### Groupings
+
+Helps to group all similar pattern routes into a single route. For example
+
+```js
+const { FakeResponse } = require("fake-response");
+
+const db = {
+  hello: "Hello World",
+  "root/parent/foo/1": "foo 1",
+  "root/parent/foo/2": "foo 2",
+  "root/parent/foo,root/parent/foo/3": "foo 3",
+};
+
+const config = {
+  groupings: {
+    "root/parent/:child/:id": "myRoute/:child/:id",
+  },
+  excludeRoutes: {
+    patternMatch: ["root/parent/:child/:id"], // removes every routes that matched this pattern
+  },
+};
+
+new FakeResponse(db, config).launchServer();
+```
+
+Now go to [http://localhost:3000/myRoute/foo/2](http://localhost:3000/myRoute/foo/2), you'll get
+
+```text
+foo 2
+```
+
+Now go to [http://localhost:3000/myRoute/foo/5](http://localhost:3000/myRoute/foo/5), you'll get
+
+```text
+foo 2
+```
+
+Since the `myRoute/foo/5` doesn't contain any data it return the first data of `myRoute/foo/5`
 
 ### Proxy
 
@@ -203,7 +245,7 @@ foo 2
 
 You can also exclude routes using config. For example:
 
-````js
+```js
 const { FakeResponse } = require("fake-response");
 
 const db = {
@@ -219,7 +261,8 @@ const config = {
   },
 };
 
-new Fa
+new FakeResponse(db, config).launchServer();
+```
 
 ### Globals
 
@@ -247,7 +290,7 @@ const globals = {
 };
 
 new FakeResponse(db, config, globals).launchServer(); // second param use the default configs
-````
+```
 
 Now you get a different response for each request.
 
@@ -614,29 +657,10 @@ fake-response db.json
 
 (or)
 
-Create a `db.js` file.
-
-```js
-const db = [
-  {
-    data: "Hello World",
-    routes: "/hello",
-  },
-];
-
-const config = {
-  port: 4000,
-};
-
-const globals = {};
-
-module.exports = { db, config, globals };
-```
-
-Start Fake Response Server
+to run the samples
 
 ```sh
-fake-response db.js
+fake-response
 ```
 
 ## Default Routes

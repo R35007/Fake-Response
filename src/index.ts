@@ -6,6 +6,7 @@ import { Server } from "http";
 import * as _ from "lodash";
 import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors } from "./model";
 import { Middlewares } from "./middlewares";
+import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
 
 const path = require("path");
 /**
@@ -44,6 +45,12 @@ export class FakeResponse extends Middlewares {
    */
   launchServer = async () => {
     try {
+      if (!this.db && !this.config && !this.globals && !this.injectors) {
+        console.log(chalk.yellow("\nUsing Sample Db"));
+        console.log("visit : " + chalk.gray("`https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts`") + "\n");
+
+        this.setData(sample_db, sample_config, sample_globals, sample_injectors);
+      }
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isServerLaunched) return;
       this.createExpressApp();

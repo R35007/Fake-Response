@@ -59,15 +59,17 @@ export class Middlewares extends DefaultMiddlewares {
     return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
         res.locals = { data, dataType, specificMiddleware, commonMiddleware, delay };
-        this.redirectIfMissingParams(req, res);
-        if (dataType == "file") {
-          res.locals.fileType = this.getResponseFromFile(data);
-        } else if (dataType === "url") {
-          res.locals.urlType = await this.getParsedDynamicUrl(data, req);
+        const canProceed = this.redirectIfMissingParams(req, res);
+        if (canProceed) {
+          if (dataType == "file") {
+            res.locals.fileType = this.getResponseFromFile(data);
+          } else if (dataType === "url") {
+            res.locals.urlType = await this.getParsedDynamicUrl(data, req);
+          }
+          setTimeout(() => {
+            next();
+          }, delay);
         }
-        setTimeout(() => {
-          next();
-        }, delay);
       } catch (err) {
         console.error("\n" + chalk.red(err.message));
         res.send(err);
@@ -195,7 +197,9 @@ export class Middlewares extends DefaultMiddlewares {
       }, windowUrl);
       console.log(`Redirecting from ${req.path} to ${dummyUrl}`);
       res.redirect(307, dummyUrl);
+      return false;
     }
+    return true;
   };
   // #endregion
 }
