@@ -15,7 +15,7 @@ const url = require("url");
  * @example
  * const {FakeResponse} = require("fake-response");
  * // validates and sets the Data
- * const fakeResponse = new FakeResponse(db, config, globals, injectors) // all params are optional
+ * const fakeResponse = new FakeResponse(db, config, injectors, globals) // all params are optional
  * fakeResponse.launchServer() // runs the initialized db
  * @link https://r35007.github.io/Fake-Response/ - For further info pls visit this ReadMe
  */
@@ -49,7 +49,7 @@ export class FakeResponse extends Middlewares {
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
-   * fakeResponse.setData(db, config, globals, injectors);
+   * fakeResponse.setData(db, config, injectors, globals);
    * @link https://github.com/R35007/Fake-Response#setdata - For further info pls visit this ReadMe
    */
   setData = (
@@ -77,7 +77,7 @@ export class FakeResponse extends Middlewares {
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
-   * const {db, config, globals, injectors} = fakeResponse.getData();
+   * const {db, config, injectors, globals} = fakeResponse.getData();
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
   getData = () => {
