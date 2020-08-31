@@ -9,10 +9,9 @@ const fs = require("fs"),
   path = require("path");
 
 class DefaultMiddlewares extends Validators {
-  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
-    super(db, config, globals, injectors);
+  constructor() {
+    super();
   }
-  // #region Default Common Middlewares
   protected logResponseTime = (req, res, next) => {
     const startHrTime = process.hrtime();
 
@@ -42,12 +41,11 @@ class DefaultMiddlewares extends Validators {
     if (!err) return next();
     console.log(chalk.red("! Error.Something went wrong"));
   };
-  //#endregion
 }
 
 export class Middlewares extends DefaultMiddlewares {
-  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
-    super(db, config, globals, injectors);
+  constructor() {
+    super();
   }
   protected initialMiddlewareWrapper = (
     data: any,
@@ -90,11 +88,11 @@ export class Middlewares extends DefaultMiddlewares {
     };
   };
 
-  protected commonMiddlewareWrapper = (globals: Globals) => {
+  protected commonMiddlewareWrapper = (excludeRoutes: string[], globals: Globals) => {
     return (req, res, next) => {
       try {
         const { data, commonMiddleware } = res.locals;
-        if (commonMiddleware.excludeRoutes.indexOf(req.path) < 0) {
+        if (excludeRoutes.indexOf(req.path) < 0) {
           const params: MiddlewareParams = { req, res, next, data, globals, locals: res.locals };
           _.isFunction(commonMiddleware.func) ? commonMiddleware.func(params) : next();
         } else {

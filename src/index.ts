@@ -4,11 +4,12 @@ import cors from "cors";
 import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
-import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors } from "./model";
+import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors, Valid_Db, HarEntry, HAR } from "./model";
 import { Middlewares } from "./middlewares";
 import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
 
 const path = require("path");
+const url = require("url");
 /**
  * Create a Fake Response server instance using this class constructor.
  * @example
@@ -31,9 +32,80 @@ export class FakeResponse extends Middlewares {
   private isResourcesLoaded = false;
   private isDefaultsCreated = false;
 
-  constructor(db?: UserDB, config?: Config, globals?: Globals, injectors?: Injectors[]) {
-    super(db, config, globals, injectors);
+  commonMiddlewareExcludeRoutes = [];
+  commonDelayExcludeRoutes = [];
+
+  constructor(db?: UserDB, config?: Config, injectors?: Injectors[], globals?: Globals) {
+    super();
+    console.log("\n" + chalk.blue("/{^_^}/ Hi!"));
+
+    if (!(!db && !config && !injectors && !globals)) {
+      this.setData(db, config, injectors, globals);
+    }
   }
+
+  /**
+   * This function validates and sets the Data explicitly
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * fakeResponse.setData(db, config, globals, injectors);
+   * @link https://github.com/R35007/Fake-Response#setdata - For further info pls visit this ReadMe
+   */
+  setData = (
+    db: UserDB = this.valid_DB,
+    config: Config = this.valid_Config,
+    injectors: Injectors[] = this.valid_Injectors,
+    globals: Globals = this.valid_Globals
+  ) => {
+    console.log("\n" + chalk.gray("Loading Data..."));
+
+    this.valid_Config = this.getValidConfig(config);
+    this.valid_Globals = this.getValidGlobals(globals);
+    this.valid_Injectors = this.getValidInjectors(injectors);
+    this.valid_DB = this.getValidDb(db, this.valid_Injectors);
+
+    console.log(chalk.gray("Done."));
+    return {
+      getData: this.getData,
+      launchServer: this.launchServer,
+    };
+  };
+
+  /**
+   * This function helps to get initialized data
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const {db, config, globals, injectors} = fakeResponse.getData();
+   * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
+   */
+  getData = () => {
+    return {
+      db: this.valid_DB,
+      config: this.valid_Config,
+      injectors: this.valid_Injectors,
+      globals: this.valid_Globals,
+    };
+  };
+
+  /**
+   * This function give the the final mock generation with groupings, proxy, excludeRoutes
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse(db, config)
+   * const mock = fakeResponse.getMockJSON();
+   * @link https://github.com/R35007/Fake-Response#getmockjson - For further info pls visit this ReadMe
+   */
+  getMockJSON = () => {
+    const db = <Db[]>this.valid_DB;
+    const mock = db.map((d) => {
+      const routes = <string[]>d.routes;
+      return { [routes.join(",")]: d.data };
+    });
+
+    return mock;
+  };
 
   /**
    * This function creates express app, starts the server loads the resources and creates default routes.
@@ -45,7 +117,7 @@ export class FakeResponse extends Middlewares {
    */
   launchServer = async () => {
     try {
-      if (!this.db && !this.config && !this.globals && !this.injectors) {
+      if (!this.valid_DB && !this.valid_Config && !this.valid_Globals && !this.valid_Injectors) {
         console.log(chalk.yellow("\nUsing Sample Db"));
         console.log("visit : " + chalk.gray("`https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts`") + "\n");
 
@@ -53,20 +125,16 @@ export class FakeResponse extends Middlewares {
       }
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isServerLaunched) return;
-      this.createExpressApp();
+      const app = this.createExpressApp();
       const server = await this.startServer();
       const results = await this.loadResources();
       await this.createDefaultRoutes();
       console.log("\n" + chalk.gray("watching...") + "\n");
       this.isServerLaunched = true;
       return {
-        app: this.app,
+        app,
         server,
         results,
-        db: <Db[]>this.db,
-        config: this.config,
-        globals: this.globals,
-        fullDbData: this.fullDbData,
       };
     } catch (err) {
       console.error(chalk.red(err.message));
@@ -104,7 +172,7 @@ export class FakeResponse extends Middlewares {
    * fakeResponse.startServer(3000) // the port is an optional param
    * @link https://github.com/R35007/Fake-Response#startserver - For further info pls visit this ReadMe
    */
-  startServer = (port: number = this.config.port): Promise<Server> => {
+  startServer = (port: number = this.valid_Config.port): Promise<Server> => {
     if (!this.app) this.createExpressApp();
     if (this.isServerStarted) return Promise.resolve(this.server);
     return new Promise((resolve, reject) => {
@@ -158,8 +226,9 @@ export class FakeResponse extends Middlewares {
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isResourcesLoaded) return Promise.resolve(this.routesResults);
       console.log("\n" + chalk.gray("Loading Resources..."));
-      const dbList = <Db[]>this.db;
-      const requests = dbList.map(
+      this.commonMiddlewareExcludeRoutes = this.getMatchedRoutesList(this.valid_DB, this.valid_Config.middleware.excludeRoutes);
+      this.commonDelayExcludeRoutes = this.getMatchedRoutesList(this.valid_DB, this.valid_Config.delay.excludeRoutes);
+      const requests = this.valid_DB.map(
         (db, dbIndex) =>
           new Promise(async (resolve) => {
             const results = await this.generateRoutes(db, dbIndex);
@@ -176,16 +245,13 @@ export class FakeResponse extends Middlewares {
     }
   };
 
-  private generateRoutes = async (db: Db, _s_index: number): Promise<RouteResult[]> => {
-    const { routes = [], _d_index = _s_index }: Db = db;
+  private generateRoutes = async (db: Valid_Db, _s_index: number): Promise<RouteResult[]> => {
+    const { routes = [], _d_index = _s_index } = db;
     try {
       if (routes.length === 0) throw new Error("routes not found. Please provide any route.");
-      const results = (<string[]>routes).reduce((result: RouteResult[], route, _r_index) => {
-        return result.concat(this.generateRoute(db, route, _r_index, _s_index));
-      }, []);
-      return results;
+      return routes.map((route, _r_index) => this.generateRoute(db, route, _r_index, _s_index));
     } catch (err) {
-      console.error(chalk.red(`  http://localhost:${this.config.port} `) + `- ${err.message} @index : ${_d_index}`);
+      console.error(chalk.red(`  http://localhost:${this.valid_Config.port} `) + `- ${err.message} @index : ${_d_index}`);
       return [{ routes, _d_index, _s_index, status: "failure", error: err.message }];
     }
   };
@@ -193,12 +259,12 @@ export class FakeResponse extends Middlewares {
   private generateRoute = (db, route, _r_index, _s_index): RouteResult => {
     const { data, dataType, middlewares, delays, _d_index = _s_index, env = {} } = db;
     try {
-      const envData = env[this.config.env] || data;
+      const envData = env[this.valid_Config.env] || data;
       this.createRoute(envData, route, dataType, middlewares[_r_index], delays[_r_index]);
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
-      console.log(chalk.red(`  http://localhost:${this.config.port}${route} `) + `- ${err.message} @index : ${_d_index}:${_r_index}`);
+      console.log(chalk.red(`  http://localhost:${this.valid_Config.port}${route} `) + `- ${err.message} @index : ${_d_index}:${_r_index}`);
       const status = <Status>"failure";
       return { routes: route, _d_index, _s_index, _r_index, status, error: err.message };
     }
@@ -221,12 +287,12 @@ export class FakeResponse extends Middlewares {
       if (!this.app) this.createExpressApp();
       checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
-      const delayTime = getDelayTime(route, delay, this.config.delay);
-      const middlewareList = this.getMiddlewareList(data, dataType, middleware, this.config.middleware, delayTime, this.globals);
+      const delayTime = getDelayTime(route, delay, this.valid_Config.delay, this.commonDelayExcludeRoutes);
+      const middlewareList = this.getMiddlewareList(data, dataType, middleware, this.valid_Config.middleware, delayTime, this.valid_Globals);
       this.app.all(route, middlewareList);
-      // console.log("  http://localhost:" + this.config.port + route);
+      // console.log("  http://localhost:" + this.valid_Config.port + route);
     } catch (err) {
-      console.error(chalk.red(err.message));
+      console.error("  http://localhost:" + this.valid_Config.port + route + " : " + chalk.red(err.message));
     }
   };
 
@@ -234,7 +300,7 @@ export class FakeResponse extends Middlewares {
     if (configMiddleware.override) {
       return [
         this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
-        this.commonMiddlewareWrapper(globals),
+        this.commonMiddlewareWrapper(this.commonMiddlewareExcludeRoutes, globals),
         this.specificMiddlewareWrapper(globals),
         this.defaultMiddleware,
       ];
@@ -243,12 +309,104 @@ export class FakeResponse extends Middlewares {
     return [
       this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
       this.specificMiddlewareWrapper(globals),
-      this.commonMiddlewareWrapper(globals),
+      this.commonMiddlewareWrapper(this.commonMiddlewareExcludeRoutes, globals),
       this.defaultMiddleware,
     ];
   }
 
   // #endregion Load Resources
+
+  /**
+   * This function helps to transform the harJSon to a simple route and response object
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.transformHar(harData, ["xhr","document"]);
+   * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
+   */
+  transformHar = (harData: HAR = <HAR>{}, filters: string[] = []) => {
+    try {
+      const entries: HarEntry[] = _.get(harData, "log.entries", []);
+      const xhrFilteredEntries = entries.filter((e) => filters.indexOf(e._resourceType) >= 0);
+      const statusFilteredEntries = xhrFilteredEntries.filter((x) => x.response.status >= 200 && x.response.status < 400);
+
+      const mock = statusFilteredEntries.reduce((result, data) => {
+        const route = url.parse(data.request.url).pathname;
+        const valid_Route = this.getValidRoute(route);
+        const responseText = _.get(data, "response.content.text", "");
+
+        let response;
+        try {
+          response = JSON.parse(responseText);
+        } catch {
+          response = responseText;
+        }
+
+        return {
+          ...result,
+          [valid_Route]: response,
+        };
+      }, {});
+
+      return mock;
+    } catch (err) {
+      console.error(chalk.red(err.message));
+    }
+  };
+
+  /**
+   * This function helps to filter only those properties which are required using schema
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const data = {
+   *  name : "foo",
+   *  likes : ["xxx","yyy"],
+   *  address:[{
+   *    "city":"bar",
+   *    "state":"TN",
+   *    "country":"India"
+   *  }]
+   * };
+   *
+   * const schema ={
+   *  name:true,
+   *  address:{
+   *    city:true
+   *  }
+   * }
+   * const db = fakeResponse.filterBySchema(data, schema);
+   * @link https://github.com/R35007/Fake-Response#filterbyschema - For further info pls visit this ReadMe
+   */
+  filterBySchema = (data: any = {}, schema: object = {}) => {
+    if (_.isPlainObject(data)) {
+      const filteredObj = Object.entries(data).reduce((result, [key, val]) => {
+        const schemaKeys = Object.keys(schema);
+        if (schemaKeys.indexOf(key) >= 0) {
+          if (_.isPlainObject(schema[key])) {
+            if (_.isPlainObject(val)) {
+              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+            } else if (_.isArray(val)) {
+              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+            } else {
+              return result;
+            }
+          } else if (schema[key] === true) {
+            return { ...result, [key]: val };
+          }
+          return result;
+        }
+        return result;
+      }, {});
+
+      return filteredObj;
+    } else if (_.isArray(data)) {
+      const filteredArray = data.map((j) => this.filterBySchema(j, schema)).filter((fa) => !_.isEmpty(fa));
+      return filteredArray.length ? filteredArray : [];
+    }
+    return data;
+  };
+
   /**
    * This function helps to create a default route explicitly.
    * This creates the following routes.
@@ -287,14 +445,14 @@ export class FakeResponse extends Middlewares {
         res.send(this.availableRoutes);
       });
     }
-    defaultRoutesLog(defaultRoutes, this.config.port);
+    defaultRoutesLog(defaultRoutes, this.valid_Config.port);
     this.isDefaultsCreated = true;
   };
 }
 
 // #region Utils
-const getDelayTime = (route, specificDelay, commonDelay) => {
-  const commonDelayTime = commonDelay.excludeRoutes.indexOf(route) < 0 ? commonDelay.time : false;
+const getDelayTime = (route, specificDelay, commonDelay, excludeRoutes) => {
+  const commonDelayTime = excludeRoutes.indexOf(route) < 0 ? commonDelay.time : false;
   if (commonDelay.override) {
     return typeof commonDelayTime !== "undefined" && commonDelayTime >= 0 ? commonDelayTime : specificDelay;
   }
