@@ -97,7 +97,7 @@ export class FakeResponse extends Middlewares {
    * const mock = fakeResponse.getMockJSON();
    * @link https://github.com/R35007/Fake-Response#getmockjson - For further info pls visit this ReadMe
    */
-  getMockJSON = () => {
+  getMockJSON = (): Array<{ [key: string]: any }> => {
     const db = <Db[]>this.valid_DB;
     const mock = db.map((d) => {
       const routes = <string[]>d.routes;
@@ -121,7 +121,7 @@ export class FakeResponse extends Middlewares {
         console.log(chalk.yellow("\nUsing Sample Db"));
         console.log("visit : " + chalk.gray("`https://github.com/R35007/Fake-Response/blob/master/src/samples/index.ts`") + "\n");
 
-        this.setData(sample_db, sample_config, sample_globals, sample_injectors);
+        this.setData(sample_db, sample_config, sample_injectors, sample_globals);
       }
       if (!this.isValidated) throw new Error("Please fix the Data error before Launching Server");
       if (this.isServerLaunched) return;

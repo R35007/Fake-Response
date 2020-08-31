@@ -14,7 +14,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
     - [Default Data](#default-data)
     - [File Data](#file-data)
     - [URL Data](#url-data)
-  - [Specific Delay](#specific-delay-time)
+  - [Specific Delay](#specific-delay)
   - [Specific Middleware](#specific-middleware)
   - [Injectors](#injectors)
   - [Globals](#globals)
@@ -875,7 +875,7 @@ fakeResponse.createDefaultRoutes();
 
 ### **setData**
 
-set the db, config, globals, injectors.
+set the db, config, injectors, globals.
 returns: `getData` and `launchServer`
 
 ```js
