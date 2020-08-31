@@ -4,3 +4,4 @@ dist
 .npmignore
 test
 .vscode/settings.json
+markdown-style.css
