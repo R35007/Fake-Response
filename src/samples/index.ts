@@ -93,6 +93,18 @@ export const sample_db: Db[] = [
     data: "This routes are proxy routes",
     routes: ["dummy/1", "dummy/2", "dummy/1/2"],
   },
+  {
+    data: "data 1",
+    routes: ["parent/1"],
+  },
+  {
+    data: "data 2",
+    routes: ["parent/2"],
+  },
+  {
+    data: "data 3, 4",
+    routes: ["parent/3", "parent/4"],
+  },
 ];
 
 export const sample_config: Config = {
@@ -107,6 +119,9 @@ export const sample_config: Config = {
     time: 200, // must be in milliseconds
     excludeRoutes: ["hello", "world", "url", "json", "txt"],
   },
+  groupings: {
+    "parent/:id": "groupedRoute/:id",
+  },
   proxy: {
     exactMatch: {
       "dummy/2": "proxy/2",
@@ -118,7 +133,7 @@ export const sample_config: Config = {
   // Note : First it applies proxy and then it excludes routes
   excludeRoutes: {
     exactMatch: ["dummy/1/2"], // excludes routes with exact match
-    patternMatch: ["dummy/:id"], // excludes every routes that matches this pattern
+    patternMatch: ["dummy/:id", "parent/:id"], // excludes every routes that matches this pattern
   },
 };
 
