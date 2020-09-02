@@ -324,16 +324,14 @@ export class FakeResponse extends Middlewares {
    * const db = fakeResponse.transformHar(harData, ["xhr","document"]);
    * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
    */
-  transformHar = (harData: HAR = <HAR>{}, filters: string[] = []) => {
+  transformHar = (harData: HAR = <HAR>{}, resourceTypeFilters: string[] = [], callback?: Function) => {
     try {
       const entries: HarEntry[] = _.get(harData, "log.entries", []);
-      const xhrFilteredEntries = entries.filter((e) => filters.indexOf(e._resourceType) >= 0);
-      const statusFilteredEntries = xhrFilteredEntries.filter((x) => x.response.status >= 200 && x.response.status < 400);
-
-      const mock = statusFilteredEntries.reduce((result, data) => {
-        const route = url.parse(data.request.url).pathname;
+      const resourceFilteredEntries = resourceTypeFilters.length ? entries.filter((e) => resourceTypeFilters.indexOf(e._resourceType) >= 0) : entries;
+      const mock = resourceFilteredEntries.reduce((result, entry) => {
+        const route = url.parse(entry.request.url).pathname;
         const valid_Route = this.getValidRoute(route);
-        const responseText = _.get(data, "response.content.text", "");
+        const responseText = _.get(entry, "response.content.text", "");
 
         let response;
         try {
@@ -342,13 +340,21 @@ export class FakeResponse extends Middlewares {
           response = responseText;
         }
 
+        let obj = { [valid_Route]: response };
+
+        if (_.isFunction(callback)) {
+          obj = callback(entry, valid_Route, response);
+        }
+
         return {
           ...result,
-          [valid_Route]: response,
+          ...obj,
         };
       }, {});
 
-      return mock;
+      const valid_Mock = Object.entries(mock).reduce((res, [key, val]) => ({ ...res, [this.getValidRoute(key)]: val }), {});
+
+      return valid_Mock;
     } catch (err) {
       console.error(chalk.red(err.message));
     }
