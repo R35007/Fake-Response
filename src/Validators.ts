@@ -36,23 +36,23 @@ export class Validators extends Utils {
     }
 
     try {
-      const { port, env, rootPath, middleware, delay, groupings, proxy, excludeRoutes } = default_Config;
+      const { port, env, rootPath, groupings, proxy, excludeRoutes, baseUrl, middleware, delay } = default_Config;
       const valid_Config = <Valid_Config>{};
 
       const { exactMatch = {}, patternMatch = {}, ...others } = config.proxy || {};
 
       valid_Config.port = !_.isEmpty(config.port) && !_.isObject(config.port) ? _.toInteger(config.port) : port;
-      valid_Config.env = !_.isEmpty(config.env) && _.isString(config.env) ? this.getValidRoute(config.env) : env;
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
-
-      valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
-      valid_Config.delay = this.getConfigDelay(config.delay, delay);
+      valid_Config.env = !_.isEmpty(config.env) && _.isString(config.env) ? this.getValidRoute(config.env) : env;
       valid_Config.groupings = _.isPlainObject(config.groupings) ? this.getValidRouteMatch(config.groupings) : groupings;
-      valid_Config.excludeRoutes = this.getValidMatchedRoutesList(config.excludeRoutes, excludeRoutes);
       valid_Config.proxy = {
         exactMatch: _.isPlainObject({ ...exactMatch, ...others }) ? this.getValidRouteMatch({ ...exactMatch, ...others }) : proxy.exactMatch,
         patternMatch: _.isPlainObject(patternMatch) ? this.getValidRouteMatch(patternMatch) : proxy.patternMatch,
       };
+      valid_Config.excludeRoutes = this.getValidMatchedRoutesList(config.excludeRoutes, excludeRoutes);
+      valid_Config.baseUrl = _.isString(config.baseUrl) ? this.getValidRoute(config.baseUrl) : baseUrl;
+      valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
+      valid_Config.delay = this.getConfigDelay(config.delay, delay);
 
       return valid_Config;
     } catch (err) {
@@ -169,11 +169,12 @@ export class Validators extends Utils {
           const valid_obj = <Valid_Db>{};
           const { data, dataType, routes, isGrouped, middlewares, delays, env } = obj;
 
-          const valid_routes = this.getValidRoutes(routes);
-          valid_obj.routes = valid_routes.filter((r) => excludeRoutesList.indexOf(r) < 0 && availableRoutes.indexOf(r) < 0);
+          valid_obj.routes = this.getValidRoutes(routes).filter((r) => excludeRoutesList.indexOf(r) < 0 && availableRoutes.indexOf(r) < 0);
 
           if (valid_obj.routes && valid_obj.routes.length) {
             availableRoutes = [...availableRoutes, ...valid_obj.routes];
+
+            valid_obj.routes = valid_obj.routes.map((r) => this.getValidRoute(this.valid_Config.baseUrl + r));
             valid_obj.dataType = <DataType>this.getValidDataType(dataType);
             valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
             valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {};
@@ -207,8 +208,8 @@ export class Validators extends Utils {
           }
         })
         .filter(Boolean)
-        .map((db, i) => ({ ...db, _d_index: i }))
-        .reverse();
+        .reverse()
+        .map((db, i) => ({ ...db, _d_index: i }));
 
       const sorted_db = _.sortBy(valid_db, ["dataType"]);
       return sorted_db;

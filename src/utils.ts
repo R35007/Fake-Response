@@ -264,7 +264,9 @@ export class Utils {
   protected getValidRoute = (route) => {
     if (_.isEmpty(route) || _.isObject(route)) return undefined;
     const routeStr = `${route}`.trim();
-    const validRoute = routeStr.startsWith("/") ? routeStr : "/" + routeStr;
+    const addedSlashAtFirst = routeStr.startsWith("/") ? routeStr : "/" + routeStr;
+    const removedSlashAtLast = addedSlashAtFirst.endsWith("/") ? addedSlashAtFirst.slice(0, -1) : addedSlashAtFirst;
+    const validRoute = removedSlashAtLast.replace("//", "/");
     return validRoute;
   };
 

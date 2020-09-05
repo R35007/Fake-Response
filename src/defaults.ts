@@ -4,6 +4,16 @@ export const default_Config: Valid_Config = {
   port: 3000,
   rootPath: "./",
   env: "",
+  groupings: {},
+  proxy: {
+    patternMatch: {},
+    exactMatch: {},
+  },
+  excludeRoutes: {
+    patternMatch: [],
+    exactMatch: [],
+  },
+  baseUrl: "",
   middleware: {
     func: ({ next }) => {
       next();
@@ -21,15 +31,6 @@ export const default_Config: Valid_Config = {
       exactMatch: [],
     },
     override: false,
-  },
-  groupings: {},
-  proxy: {
-    patternMatch: {},
-    exactMatch: {},
-  },
-  excludeRoutes: {
-    patternMatch: [],
-    exactMatch: [],
   },
 };
 

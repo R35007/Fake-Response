@@ -27,6 +27,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
     - [Groupings](#groupings)
     - [Proxy](#proxy)
     - [Exclude Routes](#exclude-routes)
+    - [Base Url](#base-url)
     - [Common Middleware](#common-middleware)
     - [Common delay](#common-delay)
   - [Sample](#sample)
@@ -621,6 +622,30 @@ const config = {
 };
 
 new FakeResponse(db, config).launchServer();
+```
+
+#### **Base Url**
+
+This url will be added to prefix to the every mock routes
+
+```js
+const { FakeResponse } = require("fake-response");
+
+const db = {
+  hello: "Hello World",
+};
+
+const config = {
+  baseUrl: "/api",
+};
+
+new FakeResponse(db, config).launchServer();
+```
+
+Now if you go to [http://localhost:3000/api/hello](http://localhost:3000/api/hello), you'll get
+
+```text
+Hello World
 ```
 
 #### **Common Middleware**

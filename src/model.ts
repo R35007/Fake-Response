@@ -25,14 +25,15 @@ export interface Config {
   port?: number;
   rootPath?: string;
   env?: string;
-  middleware?: Middleware | ConfigMiddleware;
-  delay?: number | ConfigDelay;
   groupings?: KeyValString;
   proxy?: {
     patternMatch: KeyValString;
     exactMatch: KeyValString;
   };
   excludeRoutes?: string | string[] | RoutesMatchList;
+  baseUrl?: string;
+  middleware?: Middleware | ConfigMiddleware;
+  delay?: number | ConfigDelay;
 }
 
 export interface RoutesMatchList {
@@ -155,14 +156,15 @@ export interface Valid_Config {
   port: number;
   rootPath: string;
   env: string;
-  middleware: Valid_ConfigMiddleware;
-  delay: Valid_ConfigDelay;
   groupings: KeyValString;
   proxy: {
     patternMatch: KeyValString;
     exactMatch: KeyValString;
   };
   excludeRoutes: Valid_RoutesMatchList;
+  baseUrl: string;
+  middleware: Valid_ConfigMiddleware;
+  delay: Valid_ConfigDelay;
 }
 
 export interface Valid_ConfigMiddleware {
