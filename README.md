@@ -1,4 +1,4 @@
-# Fake Response [![](https://badge.fury.io/js/fake-response.svg)](http://badge.fury.io/js/fake-response)
+# Fake Response[](#fake-response) [![](https://badge.fury.io/js/fake-response.svg)](http://badge.fury.io/js/fake-response)
 
 Get a full fake REST API with **zero coding** in **less than 30 seconds** (seriously)
 
@@ -48,6 +48,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [filterBySchema](#filterbyschema)
   - [getMockJSON](#getmockjson)
   - [getMatchedRoutesList](#getmatchedrouteslist)
+  - [getMockFromPath](#getmockfrompath)
 - [Author](#author)
 - [License](#license)
 
@@ -1013,6 +1014,21 @@ matchList = {
 }
 const routes = fakeResponse.getMatchedRoutesList(data, matchList);
 ```
+
+### **getMockFromPath**
+
+return all the json files data to a combined json data from the given path
+
+```js
+const mok = fakeResponse.getMockFromPath(directoryPath, excludeFolders);
+```
+
+**`Params`**
+
+| Name           | Type   | Required | Default | Description                                                   |
+| -------------- | ------ | -------- | ------- | ------------------------------------------------------------- |
+| directoryPath  | string | NO       | "./"    | Provide the filepath or the directory path                    |
+| excludeFolders | object | No       | []      | list of path or filename to exclude from requiring json files |
 
 ## Author
 

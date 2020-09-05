@@ -37,7 +37,7 @@ export class Validators extends Utils {
 
     try {
       const { port, env, rootPath, middleware, delay, groupings, proxy, excludeRoutes } = default_Config;
-      const valid_Config = { ...config };
+      const valid_Config = <Valid_Config>{};
 
       const { exactMatch = {}, patternMatch = {}, ...others } = config.proxy || {};
 
@@ -54,10 +54,11 @@ export class Validators extends Utils {
         patternMatch: _.isPlainObject(patternMatch) ? this.getValidRouteMatch(patternMatch) : proxy.patternMatch,
       };
 
-      return <Valid_Config>valid_Config;
+      return valid_Config;
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      return <Valid_Config>{};
     }
   };
 
@@ -85,7 +86,7 @@ export class Validators extends Utils {
    * const injectors = fakeResponse.getValidInjectors(injectors);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidInjectors = (injectors: Injectors[] = []): Valid_Injectors[] | [] => {
+  getValidInjectors = (injectors: Injectors[] = []): Valid_Injectors[] => {
     if (_.isEmpty(injectors) || !_.isArray(injectors)) {
       return <[]>default_Injectors;
     }
@@ -103,6 +104,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      return [];
     }
   };
 
@@ -172,7 +174,6 @@ export class Validators extends Utils {
 
           if (valid_obj.routes && valid_obj.routes.length) {
             availableRoutes = [...availableRoutes, ...valid_obj.routes];
-            valid_obj._d_index = i;
             valid_obj.dataType = <DataType>this.getValidDataType(dataType);
             valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
             valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {};
@@ -206,6 +207,7 @@ export class Validators extends Utils {
           }
         })
         .filter(Boolean)
+        .map((db, i) => ({ ...db, _d_index: i }))
         .reverse();
 
       const sorted_db = _.sortBy(valid_db, ["dataType"]);
@@ -213,6 +215,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      return [];
     }
   };
 
@@ -230,11 +233,7 @@ export class Validators extends Utils {
       console.log(chalk.gray("  Transforming Json..."));
 
       if (_.isString(data)) {
-        if (fs.existsSync(this.parseUrl(data)) && path.extname(this.parseUrl(data)) === ".json") {
-          valid_data = JSON.parse(fs.readFileSync(this.parseUrl(data), "utf8"));
-        } else {
-          throw new Error(this.parseUrl(data) + " - Invalid path or json. Please provide a valid path or json.");
-        }
+        valid_data = this.getMockFromPath(this.parseUrl(data));
       }
 
       if (_.isPlainObject(valid_data)) {
@@ -262,6 +261,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      return [];
     }
   };
 
@@ -273,26 +273,63 @@ export class Validators extends Utils {
    * const db = fakeResponse.getMatchedRoutesList(db, routesMatchList);
    * @link https://github.com/R35007/Fake-Response#getmatchedrouteslist - For further info pls visit this ReadMe
    */
-  getMatchedRoutesList = (db: Db[] | object, routesMatchList: string[] | Valid_RoutesMatchList) => {
-    let userDb = _.isPlainObject(db) ? this.convertJSONToDbList(db) : _.isArray(db) ? db : [];
+  getMatchedRoutesList = (db: Db[] | object, routesMatchList: string[] | Valid_RoutesMatchList): string[] => {
+    try {
+      let userDb = _.isPlainObject(db) ? this.convertJSONToDbList(db) : _.isArray(db) ? db : [];
 
-    const routesList = _.flatten(userDb.map((db) => this.getValidRoutes(db.routes)));
+      const routesList = _.flatten(userDb.map((db) => this.getValidRoutes(db.routes)));
 
-    if (_.isArray(routesMatchList)) {
-      return this.getValidRoutes(routesMatchList).every((r) => _.isString()) ? routesList.filter((r) => routesMatchList.indexOf(r) >= 0) : [];
-    } else if (_.isPlainObject(routesMatchList)) {
-      let exactMatch = routesMatchList.exactMatch || [];
-      let patternMatch = routesMatchList.patternMatch || [];
+      if (_.isArray(routesMatchList)) {
+        return this.getValidRoutes(routesMatchList).every((r) => _.isString()) ? routesList.filter((r) => routesMatchList.indexOf(r) >= 0) : [];
+      } else if (_.isPlainObject(routesMatchList)) {
+        let exactMatch = routesMatchList.exactMatch || [];
+        let patternMatch = routesMatchList.patternMatch || [];
 
-      exactMatch = exactMatch.every((r) => _.isString(r)) ? this.getValidRoutes(exactMatch) : [];
-      patternMatch = patternMatch.every((r) => _.isString(r)) ? this.getValidRoutes(patternMatch) : [];
+        exactMatch = exactMatch.every((r) => _.isString(r)) ? this.getValidRoutes(exactMatch) : [];
+        patternMatch = patternMatch.every((r) => _.isString(r)) ? this.getValidRoutes(patternMatch) : [];
 
-      const exactExcludeRoutes = routesList.filter((r) => exactMatch.indexOf(r) >= 0);
-      const patternExcludeRoutes = routesList.filter((r) => patternMatch.some((pe) => !_.isEmpty(new UrlPattern(pe).match(r))));
-      const excludeRoutesList = [...exactExcludeRoutes, ...patternExcludeRoutes];
-      return excludeRoutesList;
+        const exactExcludeRoutes = routesList.filter((r) => exactMatch.indexOf(r) >= 0);
+        const patternExcludeRoutes = routesList.filter((r) => patternMatch.some((pe) => !_.isEmpty(new UrlPattern(pe).match(r))));
+        const excludeRoutesList = [...exactExcludeRoutes, ...patternExcludeRoutes];
+        return excludeRoutesList;
+      }
+
+      return [];
+    } catch (err) {
+      console.error(chalk.red(err.message));
+      return [];
     }
+  };
 
-    return [];
+  /**
+   * This function returns all the json files data to a combined json from the given path
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.getMockFromPath(folderOrFilePath, excludeFolders);
+   * @link https://github.com/R35007/Fake-Response#getmockfrompath - For further info pls visit this ReadMe
+   */
+  getMockFromPath = (directoryPath: string = "./", excludeFolders: string[] = []): object => {
+    try {
+      const stats = fs.statSync(directoryPath);
+      if (stats.isFile() && path.extname(directoryPath) === ".json") {
+        const obj = JSON.parse(fs.readFileSync(directoryPath, "utf-8"));
+        return obj;
+      } else if (stats.isDirectory() && excludeFolders.indexOf(directoryPath) < 0) {
+        const files = fs.readdirSync(directoryPath);
+        const filteredFiles = files.filter((file) => excludeFolders.indexOf(file) < 0);
+
+        const mockJson = filteredFiles.reduce((mock, file) => {
+          const fullPath = directoryPath + "/" + file;
+          return { ...mock, ...this.getMockFromPath(path.resolve(fullPath), excludeFolders) };
+        }, {});
+        return mockJson;
+      }
+      return {};
+    } catch (err) {
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
+      return {};
+    }
   };
 }
