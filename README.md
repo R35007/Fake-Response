@@ -1020,7 +1020,7 @@ const routes = fakeResponse.getMatchedRoutesList(data, matchList);
 return all the json files data to a combined json data from the given path
 
 ```js
-const mok = fakeResponse.getMockFromPath(directoryPath, excludeFolders);
+const mock = fakeResponse.getMockFromPath(directoryPath, excludeFolders);
 ```
 
 **`Params`**
