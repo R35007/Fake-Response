@@ -3,6 +3,7 @@ import { Valid_Config, Valid_Db, Globals, Valid_Injectors, Valid_RoutesMatchList
 export const default_Config: Valid_Config = {
   port: 3000,
   rootPath: "./",
+  baseUrl: "",
   env: "",
   groupings: {},
   proxy: {
@@ -13,7 +14,6 @@ export const default_Config: Valid_Config = {
     patternMatch: [],
     exactMatch: [],
   },
-  baseUrl: "",
   middleware: {
     func: ({ next }) => {
       next();

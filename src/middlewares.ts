@@ -4,7 +4,7 @@ import { Validators } from "./Validators";
 import axios, { AxiosRequestConfig } from "axios";
 import * as _ from "lodash";
 
-import { Config, Globals, Middleware, MiddlewareParams, UserDB, FileType, URLType, Locals, Injectors } from "./model";
+import { Config, Globals, Middleware, MiddlewareParams, FileType, URLType, Locals } from "./model";
 const fs = require("fs"),
   path = require("path");
 

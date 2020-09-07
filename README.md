@@ -22,12 +22,12 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
     - [Response Sequence](#response-sequence)
   - [Config](#config)
     - [Port](#port)
-    - [Env](#env)
     - [Root Path](#root-path)
+    - [Base Url](#base-url)
+    - [Env](#env)
     - [Groupings](#groupings)
     - [Proxy](#proxy)
     - [Exclude Routes](#exclude-routes)
-    - [Base Url](#base-url)
     - [Common Middleware](#common-middleware)
     - [Common delay](#common-delay)
   - [Sample](#sample)
@@ -445,6 +445,34 @@ const config = {
 new FakeResponse(db, config).launchServer();
 ```
 
+#### **Root Path**
+
+Roth path helps to get the files that are relative to this path. For example please refer [File Data](#file-data)
+
+#### **Base Url**
+
+This url will be added to prefix to the every mock routes
+
+```js
+const { FakeResponse } = require("fake-response");
+
+const db = {
+  hello: "Hello World",
+};
+
+const config = {
+  baseUrl: "/api",
+};
+
+new FakeResponse(db, config).launchServer();
+```
+
+Now if you go to [http://localhost:3000/api/hello](http://localhost:3000/api/hello), you'll get
+
+```text
+Hello World
+```
+
 #### **Env**
 
 For testing purpose we may want to switch data between env. This can done using the env property in the config.
@@ -514,10 +542,6 @@ Now if you go to [http://localhost:3000/user](http://localhost:3000/user), you'l
   name : "bar"
 }
 ```
-
-#### **Root Path**
-
-Roth path helps to get the files that are relative to this path. For example please refer [File Data](#file-data)
 
 #### **Groupings**
 
@@ -622,30 +646,6 @@ const config = {
 };
 
 new FakeResponse(db, config).launchServer();
-```
-
-#### **Base Url**
-
-This url will be added to prefix to the every mock routes
-
-```js
-const { FakeResponse } = require("fake-response");
-
-const db = {
-  hello: "Hello World",
-};
-
-const config = {
-  baseUrl: "/api",
-};
-
-new FakeResponse(db, config).launchServer();
-```
-
-Now if you go to [http://localhost:3000/api/hello](http://localhost:3000/api/hello), you'll get
-
-```text
-Hello World
 ```
 
 #### **Common Middleware**

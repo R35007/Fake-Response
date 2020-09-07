@@ -10,13 +10,6 @@ const fs = require("fs");
 const path = require("path");
 
 export class Validators extends Utils {
-  isValidated = true;
-
-  valid_DB: Valid_Db[];
-  valid_Config: Valid_Config;
-  valid_Globals: Globals;
-  valid_Injectors: Valid_Injectors[] | [];
-
   constructor() {
     super();
   }
@@ -170,11 +163,11 @@ export class Validators extends Utils {
           const { data, dataType, routes, isGrouped, middlewares, delays, env } = obj;
 
           valid_obj.routes = this.getValidRoutes(routes).filter((r) => excludeRoutesList.indexOf(r) < 0 && availableRoutes.indexOf(r) < 0);
+          valid_obj.routes = [...new Set(valid_obj.routes)];
 
           if (valid_obj.routes && valid_obj.routes.length) {
             availableRoutes = [...availableRoutes, ...valid_obj.routes];
 
-            valid_obj.routes = valid_obj.routes.map((r) => this.getValidRoute(this.valid_Config.baseUrl + r));
             valid_obj.dataType = <DataType>this.getValidDataType(dataType);
             valid_obj.data = obj.dataType === "file" ? this.parseUrl(<string>data || "") : data || "";
             valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {};
@@ -312,16 +305,17 @@ export class Validators extends Utils {
    */
   getMockFromPath = (directoryPath: string = "./", excludeFolders: string[] = []): object => {
     try {
-      const stats = fs.statSync(directoryPath);
-      if (stats.isFile() && path.extname(directoryPath) === ".json") {
-        const obj = JSON.parse(fs.readFileSync(directoryPath, "utf-8"));
+      const parsedUrl = this.parseUrl(directoryPath);
+      const stats = fs.statSync(parsedUrl);
+      if (stats.isFile() && path.extname(parsedUrl) === ".json") {
+        const obj = JSON.parse(fs.readFileSync(parsedUrl, "utf-8"));
         return obj;
-      } else if (stats.isDirectory() && excludeFolders.indexOf(directoryPath) < 0) {
-        const files = fs.readdirSync(directoryPath);
+      } else if (stats.isDirectory() && excludeFolders.indexOf(parsedUrl) < 0) {
+        const files = fs.readdirSync(parsedUrl);
         const filteredFiles = files.filter((file) => excludeFolders.indexOf(file) < 0);
 
         const mockJson = filteredFiles.reduce((mock, file) => {
-          const fullPath = directoryPath + "/" + file;
+          const fullPath = parsedUrl + "/" + file;
           return { ...mock, ...this.getMockFromPath(path.resolve(fullPath), excludeFolders) };
         }, {});
         return mockJson;

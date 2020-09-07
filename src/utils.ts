@@ -1,11 +1,29 @@
 import * as _ from "lodash";
-import { DataType, Middleware, Db, Valid_ConfigMiddleware, Valid_ConfigDelay, Valid_RoutesMatchList, Valid_Injectors } from "./model";
+import {
+  DataType,
+  Middleware,
+  Db,
+  Valid_ConfigMiddleware,
+  Valid_ConfigDelay,
+  Valid_RoutesMatchList,
+  Valid_Injectors,
+  Valid_Db,
+  Valid_Config,
+  Globals,
+} from "./model";
 import UrlPattern from "url-pattern";
 import { default_Config } from "./defaults";
 
 const fs = require("fs");
 const path = require("path");
 export class Utils {
+  isValidated = true;
+
+  valid_DB: Valid_Db[];
+  valid_Config: Valid_Config;
+  valid_Globals: Globals;
+  valid_Injectors: Valid_Injectors[];
+  constructor() {}
   protected getInjector = (route: string, injectors: Valid_Injectors[], type: string): Middleware | number | undefined => {
     const relatedInjector = injectors.find((inject) => {
       const exactMatch = inject.routes.exactMatch;
@@ -262,11 +280,13 @@ export class Utils {
   };
 
   protected getValidRoute = (route) => {
+    const baseUrl = _.get(this, "valid_Config.baseUrl", "");
     if (_.isEmpty(route) || _.isObject(route)) return undefined;
     const routeStr = `${route}`.trim();
     const addedSlashAtFirst = routeStr.startsWith("/") ? routeStr : "/" + routeStr;
     const removedSlashAtLast = addedSlashAtFirst.endsWith("/") ? addedSlashAtFirst.slice(0, -1) : addedSlashAtFirst;
-    const validRoute = removedSlashAtLast.replace("//", "/");
+    const withBaseUrl = !_.isEmpty(baseUrl) && !removedSlashAtLast.startsWith(baseUrl) ? baseUrl + removedSlashAtLast : removedSlashAtLast;
+    const validRoute = withBaseUrl.replace("//", "/");
     return validRoute;
   };
 

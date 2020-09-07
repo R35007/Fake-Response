@@ -24,6 +24,7 @@ export type Middleware = (params: MiddlewareParams) => any;
 export interface Config {
   port?: number;
   rootPath?: string;
+  baseUrl?: string;
   env?: string;
   groupings?: KeyValString;
   proxy?: {
@@ -31,7 +32,6 @@ export interface Config {
     exactMatch: KeyValString;
   };
   excludeRoutes?: string | string[] | RoutesMatchList;
-  baseUrl?: string;
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
 }
@@ -155,6 +155,7 @@ export interface Valid_Db {
 export interface Valid_Config {
   port: number;
   rootPath: string;
+  baseUrl: string;
   env: string;
   groupings: KeyValString;
   proxy: {
@@ -162,7 +163,6 @@ export interface Valid_Config {
     exactMatch: KeyValString;
   };
   excludeRoutes: Valid_RoutesMatchList;
-  baseUrl: string;
   middleware: Valid_ConfigMiddleware;
   delay: Valid_ConfigDelay;
 }
