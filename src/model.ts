@@ -1,4 +1,4 @@
-import express from "express";
+import * as express from "express";
 import { Middlewares } from "./middlewares";
 
 export type UserDB = string | Object | Db[];

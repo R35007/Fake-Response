@@ -4,9 +4,9 @@ import cors from "cors";
 import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
-import { Config, Db, Globals, Middleware, RouteResult, Status, UserDB, Injectors, Valid_Db, HarEntry, HAR } from "./model";
 import { Middlewares } from "./middlewares";
-import { sample_db, sample_config, sample_globals, sample_injectors } from "./samples";
+import { Config, Db, Globals, HAR, HarEntry, Injectors, Middleware, RouteResult, Status, UserDB, Valid_Db } from "./model";
+import { sample_config, sample_db, sample_globals, sample_injectors } from "./samples";
 
 const path = require("path");
 const url = require("url");
@@ -202,6 +202,11 @@ export class FakeResponse extends Middlewares {
     return new Promise((resolve, reject) => {
       this.server
         .close(() => {
+          this.isServerLaunched = false;
+          this.isExpressAppCreated = false;
+          this.isServerStarted = false;
+          this.isResourcesLoaded = false;
+          this.isDefaultsCreated = false;
           console.log(chalk.gray("\n Fake Response Server Stopped"));
           resolve(true);
         })
@@ -288,7 +293,14 @@ export class FakeResponse extends Middlewares {
       checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
       const delayTime = getDelayTime(route, delay, this.valid_Config.delay, this.commonDelayExcludeRoutes);
-      const middlewareList = this.getMiddlewareList(data, dataType, middleware, this.valid_Config.middleware, delayTime, this.valid_Globals);
+      const middlewareList = this.getMiddlewareList(
+        data,
+        dataType,
+        middleware,
+        this.valid_Config.middleware,
+        delayTime,
+        this.valid_Globals
+      );
       this.app.all(route, middlewareList);
       // console.log("  http://localhost:" + this.valid_Config.port + route);
     } catch (err) {
@@ -327,7 +339,9 @@ export class FakeResponse extends Middlewares {
   transformHar = (harData: HAR = <HAR>{}, resourceTypeFilters: string[] = [], callback?: Function) => {
     try {
       const entries: HarEntry[] = _.get(harData, "log.entries", []);
-      const resourceFilteredEntries = resourceTypeFilters.length ? entries.filter((e) => resourceTypeFilters.indexOf(e._resourceType) >= 0) : entries;
+      const resourceFilteredEntries = resourceTypeFilters.length
+        ? entries.filter((e) => resourceTypeFilters.indexOf(e._resourceType) >= 0)
+        : entries;
       const mock = resourceFilteredEntries.reduce((result, entry) => {
         const route = url.parse(entry.request.url).pathname;
         const valid_Route = this.getValidRoute(route);
@@ -467,7 +481,8 @@ const getDelayTime = (route, specificDelay, commonDelay, excludeRoutes) => {
 
 const checkRoute = (dataType, route, delay, availableRoutes) => {
   if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
-  if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes)) throw new Error("Please provide a valid route");
+  if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes))
+    throw new Error("Please provide a valid route");
   if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
 };
 
