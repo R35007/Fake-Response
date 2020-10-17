@@ -202,11 +202,7 @@ export class FakeResponse extends Middlewares {
     return new Promise((resolve, reject) => {
       this.server
         .close(() => {
-          this.isServerLaunched = false;
-          this.isExpressAppCreated = false;
-          this.isServerStarted = false;
-          this.isResourcesLoaded = false;
-          this.isDefaultsCreated = false;
+          this.resetValues();
           console.log(chalk.gray("\n Fake Response Server Stopped"));
           resolve(true);
         })
@@ -214,6 +210,21 @@ export class FakeResponse extends Middlewares {
           reject(err);
         });
     });
+  };
+
+  private resetValues = () => {
+    this.isServerLaunched = false;
+    this.isServerStarted = false;
+    this.isResourcesLoaded = false;
+    this.isDefaultsCreated = false;
+
+    this.server = undefined;
+
+    this.availableRoutes = [];
+    this.fullDbData = {};
+    this.routesResults = [];
+    this.commonMiddlewareExcludeRoutes = [];
+    this.commonDelayExcludeRoutes = [];
   };
 
   // #region Load Resources
