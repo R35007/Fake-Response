@@ -217,7 +217,9 @@ export class FakeResponse extends Middlewares {
     this.isServerStarted = false;
     this.isResourcesLoaded = false;
     this.isDefaultsCreated = false;
+    this.isExpressAppCreated = false;
 
+    this.app = undefined;
     this.server = undefined;
 
     this.availableRoutes = [];
