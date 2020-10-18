@@ -3,16 +3,16 @@ import express from "express";
 import { Validators } from "./Validators";
 import axios, { AxiosRequestConfig } from "axios";
 import * as _ from "lodash";
+import * as fs from "fs";
+import * as path from "path";
 
 import { Config, Globals, Middleware, MiddlewareParams, FileType, URLType, Locals } from "./model";
-const fs = require("fs"),
-  path = require("path");
 
 class DefaultMiddlewares extends Validators {
   constructor() {
     super();
   }
-  protected logResponseTime = (req, res, next) => {
+  protected logResponseTime(req, res, next) {
     const startHrTime = process.hrtime();
 
     res.on("finish", () => {
@@ -23,9 +23,9 @@ class DefaultMiddlewares extends Validators {
     });
 
     next();
-  };
+  }
 
-  protected getStatusCodeColor = (statusCode: number) => {
+  protected getStatusCodeColor(statusCode: number) {
     if (statusCode === 200) {
       return chalk.green(statusCode);
     } else if (statusCode >= 300 && statusCode < 400) {
@@ -35,25 +35,25 @@ class DefaultMiddlewares extends Validators {
     } else {
       return chalk.yellow(statusCode);
     }
-  };
+  }
 
-  protected errorHandler = (err, req, res, next) => {
+  protected errorHandler(err, req, res, next) {
     if (!err) return next();
     console.log(chalk.red("! Error.Something went wrong"));
-  };
+  }
 }
 
 export class Middlewares extends DefaultMiddlewares {
   constructor() {
     super();
   }
-  protected initialMiddlewareWrapper = (
+  protected initialMiddlewareWrapper(
     data: any,
     dataType: string,
     specificMiddleware: Middleware,
     commonMiddleware: Config["middleware"],
     delay: number
-  ) => {
+  ) {
     return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
         res.locals = { data, dataType, specificMiddleware, commonMiddleware, delay };
@@ -73,9 +73,9 @@ export class Middlewares extends DefaultMiddlewares {
         res.send(err);
       }
     };
-  };
+  }
 
-  protected specificMiddlewareWrapper = (globals: Globals) => {
+  protected specificMiddlewareWrapper(globals: Globals) {
     return (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
         const { data, specificMiddleware } = res.locals;
@@ -86,9 +86,9 @@ export class Middlewares extends DefaultMiddlewares {
         res.send(err);
       }
     };
-  };
+  }
 
-  protected commonMiddlewareWrapper = (excludeRoutes: string[], globals: Globals) => {
+  protected commonMiddlewareWrapper(excludeRoutes: string[], globals: Globals) {
     return (req, res, next) => {
       try {
         const { data, commonMiddleware } = res.locals;
@@ -103,9 +103,9 @@ export class Middlewares extends DefaultMiddlewares {
         res.send(err);
       }
     };
-  };
+  }
 
-  protected defaultMiddleware = (req: express.Request, res: express.Response, next) => {
+  protected defaultMiddleware(req: express.Request, res: express.Response, next) {
     try {
       const { data, dataType, fileType, urlType } = <Locals>res.locals;
       if (!res.headersSent) {
@@ -132,10 +132,10 @@ export class Middlewares extends DefaultMiddlewares {
       console.error("\n" + chalk.red(err.message));
       res.send(err);
     }
-  };
+  }
 
   // #region Utils
-  private getParsedDynamicUrl = async (data, req) => {
+  private async getParsedDynamicUrl(data, req) {
     if (_.isString(data) && this.isValidURL(data)) {
       const obj = this.getDynamicUrlObj(data, req);
       return obj;
@@ -147,9 +147,9 @@ export class Middlewares extends DefaultMiddlewares {
     } else {
       throw new Error("Invalid URL. Please provide a valid URL");
     }
-  };
+  }
 
-  private getResponseFromFile = (data): FileType => {
+  private getResponseFromFile(data): FileType {
     const parsedUrl = this.parseUrl(data);
     if (!_.isObject(data) && _.isString(data) && fs.existsSync(parsedUrl)) {
       const fileExtension = path.extname(parsedUrl);
@@ -170,9 +170,9 @@ export class Middlewares extends DefaultMiddlewares {
     }
 
     throw new Error(parsedUrl + " - Invalid Path. Please provide a valid path.");
-  };
+  }
 
-  private getDynamicUrlObj = (url, req): URLType => {
+  private getDynamicUrlObj(url, req): URLType {
     const params = req.params;
     const dynamicUrl = Object.keys(params).reduce((res, key) => {
       return url.replace(`/:${key}`, `/${params[key]}`);
@@ -183,9 +183,9 @@ export class Middlewares extends DefaultMiddlewares {
       data: req.body,
     };
     return locals;
-  };
+  }
 
-  private redirectIfMissingParams = (req, res) => {
+  private redirectIfMissingParams(req, res) {
     const params: object = req.params;
     const windowUrl = req.path;
     const hasParams = Object.keys(params).filter((k) => params[k] !== `:${k}`);
@@ -198,6 +198,6 @@ export class Middlewares extends DefaultMiddlewares {
       return false;
     }
     return true;
-  };
+  }
   // #endregion
 }

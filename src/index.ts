@@ -5,11 +5,11 @@ import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
 import { Middlewares } from "./middlewares";
+import * as path from "path";
+import * as url from "url";
 import { Config, Db, Globals, HAR, HarEntry, Injectors, Middleware, RouteResult, Status, UserDB, Valid_Db } from "./model";
 import { sample_config, sample_db, sample_globals, sample_injectors } from "./samples";
 
-const path = require("path");
-const url = require("url");
 /**
  * Create a Fake Response server instance using this class constructor.
  * @example
@@ -52,12 +52,12 @@ export class FakeResponse extends Middlewares {
    * fakeResponse.setData(db, config, injectors, globals);
    * @link https://github.com/R35007/Fake-Response#setdata - For further info pls visit this ReadMe
    */
-  setData = (
+  setData(
     db: UserDB = this.valid_DB,
     config: Config = this.valid_Config,
     injectors: Injectors[] = this.valid_Injectors,
     globals: Globals = this.valid_Globals
-  ) => {
+  ) {
     console.log("\n" + chalk.gray("Loading Data..."));
 
     this.valid_Config = this.getValidConfig(config);
@@ -70,7 +70,7 @@ export class FakeResponse extends Middlewares {
       getData: this.getData,
       launchServer: this.launchServer,
     };
-  };
+  }
 
   /**
    * This function helps to get initialized data
@@ -86,6 +86,7 @@ export class FakeResponse extends Middlewares {
       config: this.valid_Config,
       injectors: this.valid_Injectors,
       globals: this.valid_Globals,
+      availableRoutes: this.availableRoutes,
     };
   };
 
@@ -97,7 +98,7 @@ export class FakeResponse extends Middlewares {
    * const mock = fakeResponse.getMockJSON();
    * @link https://github.com/R35007/Fake-Response#getmockjson - For further info pls visit this ReadMe
    */
-  getMockJSON = (): Array<{ [key: string]: any }> => {
+  getMockJSON(): Array<{ [key: string]: any }> {
     const db = <Db[]>this.valid_DB;
     const mock = db.map((d) => {
       const routes = <string[]>d.routes;
@@ -105,7 +106,7 @@ export class FakeResponse extends Middlewares {
     });
 
     return mock;
-  };
+  }
 
   /**
    * This function creates express app, starts the server loads the resources and creates default routes.
@@ -135,6 +136,7 @@ export class FakeResponse extends Middlewares {
         app,
         server,
         results,
+        availableRoutes: this.availableRoutes,
       };
     } catch (err) {
       console.error(chalk.red(err.message));
@@ -149,7 +151,7 @@ export class FakeResponse extends Middlewares {
    * const app = fakeResponse.createExpressApp() // creates and returns the express app.
    * @link https://r35007.github.io/Fake-Response/#createexpressapp - For further info pls visit this ReadMe
    */
-  createExpressApp = () => {
+  createExpressApp() {
     if (this.isExpressAppCreated) return this.app;
     this.app = express();
     this.app.use(bodyParser.urlencoded({ extended: true }));
@@ -160,7 +162,7 @@ export class FakeResponse extends Middlewares {
     this.app.set("json spaces", 2);
     this.isExpressAppCreated = true;
     return this.app;
-  };
+  }
 
   /**
    * This function starts the express server.
@@ -172,7 +174,7 @@ export class FakeResponse extends Middlewares {
    * fakeResponse.startServer(3000) // the port is an optional param
    * @link https://github.com/R35007/Fake-Response#startserver - For further info pls visit this ReadMe
    */
-  startServer = (port: number = this.valid_Config.port): Promise<Server> => {
+  startServer(port: number = this.valid_Config.port): Promise<Server> {
     if (!this.app) this.createExpressApp();
     if (this.isServerStarted) return Promise.resolve(this.server);
     return new Promise((resolve, reject) => {
@@ -188,7 +190,7 @@ export class FakeResponse extends Middlewares {
           reject(err);
         });
     });
-  };
+  }
 
   /**
    * This function stops the express server
@@ -198,7 +200,7 @@ export class FakeResponse extends Middlewares {
    * const isStopped = fakeResponse.stopServer() // make sure the server is already started
    * @link https://github.com/R35007/Fake-Response#stopserver - For further info pls visit this ReadMe
    */
-  stopServer = (): Promise<Boolean> => {
+  stopServer(): Promise<Boolean> {
     return new Promise((resolve, reject) => {
       this.server
         .close(() => {
@@ -210,9 +212,9 @@ export class FakeResponse extends Middlewares {
           reject(err);
         });
     });
-  };
+  }
 
-  private resetValues = () => {
+  private resetValues() {
     this.isServerLaunched = false;
     this.isServerStarted = false;
     this.isResourcesLoaded = false;
@@ -227,7 +229,7 @@ export class FakeResponse extends Middlewares {
     this.routesResults = [];
     this.commonMiddlewareExcludeRoutes = [];
     this.commonDelayExcludeRoutes = [];
-  };
+  }
 
   // #region Load Resources
   /**
@@ -349,7 +351,7 @@ export class FakeResponse extends Middlewares {
    * const db = fakeResponse.transformHar(harData, ["xhr","document"]);
    * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
    */
-  transformHar = (harData: HAR = <HAR>{}, resourceTypeFilters: string[] = [], callback?: Function) => {
+  transformHar(harData: HAR = <HAR>{}, resourceTypeFilters: string[] = [], callback?: Function) {
     try {
       const entries: HarEntry[] = _.get(harData, "log.entries", []);
       const resourceFilteredEntries = resourceTypeFilters.length
@@ -385,7 +387,7 @@ export class FakeResponse extends Middlewares {
     } catch (err) {
       console.error(chalk.red(err.message));
     }
-  };
+  }
 
   /**
    * This function helps to filter only those properties which are required using schema
@@ -411,7 +413,7 @@ export class FakeResponse extends Middlewares {
    * const db = fakeResponse.filterBySchema(data, schema);
    * @link https://github.com/R35007/Fake-Response#filterbyschema - For further info pls visit this ReadMe
    */
-  filterBySchema = (data: any = {}, schema: object = {}) => {
+  filterBySchema(data: any = {}, schema: object = {}) {
     if (_.isPlainObject(data)) {
       const filteredObj = Object.entries(data).reduce((result, [key, val]) => {
         const schemaKeys = Object.keys(schema);
@@ -438,7 +440,7 @@ export class FakeResponse extends Middlewares {
       return filteredArray.length ? filteredArray : [];
     }
     return data;
-  };
+  }
 
   /**
    * This function helps to create a default route explicitly.
@@ -454,7 +456,7 @@ export class FakeResponse extends Middlewares {
    * fakeResponse.createDefaultRoutes()
    * @link https://github.com/R35007/Fake-Response#createdefaultroutes - For further info pls visit this ReadMe
    **/
-  createDefaultRoutes = () => {
+  createDefaultRoutes() {
     if (!this.app) this.createExpressApp();
     if (this.isDefaultsCreated) return;
     const HOME = "/",
@@ -480,7 +482,7 @@ export class FakeResponse extends Middlewares {
     }
     defaultRoutesLog(defaultRoutes, this.valid_Config.port);
     this.isDefaultsCreated = true;
-  };
+  }
 }
 
 // #region Utils

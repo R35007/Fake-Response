@@ -13,9 +13,9 @@ import {
 } from "./model";
 import UrlPattern from "url-pattern";
 import { default_Config } from "./defaults";
+import * as fs from "fs";
+import * as path from "path";
 
-const fs = require("fs");
-const path = require("path");
 export class Utils {
   isValidated = true;
 
@@ -29,7 +29,8 @@ export class Utils {
       const exactMatch = inject.routes.exactMatch;
       const PatternMatch = inject.routes.patternMatch;
       const isMatched =
-        typeof inject[type] !== "undefined" && (exactMatch.indexOf(route) >= 0 || PatternMatch.some((pr) => new UrlPattern(pr).match(route)));
+        typeof inject[type] !== "undefined" &&
+        (exactMatch.indexOf(route) >= 0 || PatternMatch.some((pr) => new UrlPattern(pr).match(route)));
       return isMatched;
     });
     return relatedInjector ? relatedInjector[type] : undefined;

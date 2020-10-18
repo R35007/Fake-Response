@@ -5,9 +5,8 @@ import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, Valid_Rou
 import { Valid_Db, Valid_Config, Valid_Injectors } from "./model";
 import { default_Db, default_Config, default_Injectors, default_Globals, default_InjectorsRoute } from "./defaults";
 import { Utils } from "./utils";
-
-const fs = require("fs");
-const path = require("path");
+import * as fs from "fs";
+import * as path from "path";
 
 export class Validators extends Utils {
   constructor() {
@@ -22,7 +21,7 @@ export class Validators extends Utils {
    * const config = fakeResponse.getValidConfig(config);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidConfig = (config: Config = this.valid_Config): Valid_Config => {
+  getValidConfig(config: Config = this.valid_Config): Valid_Config {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
       console.log(chalk.yellow("  Oops, Config not found. Using default Config"));
       return default_Config;
@@ -34,12 +33,14 @@ export class Validators extends Utils {
 
       const { exactMatch = {}, patternMatch = {}, ...others } = config.proxy || {};
 
-      valid_Config.port = !_.isEmpty(config.port) && !_.isObject(config.port) ? _.toInteger(config.port) : port;
+      valid_Config.port = !_.isObject(config.port) ? _.toInteger(config.port || port) : port;
       valid_Config.rootPath = this.isDirectoryExist(config.rootPath) ? config.rootPath : rootPath;
       valid_Config.env = !_.isEmpty(config.env) && _.isString(config.env) ? this.getValidRoute(config.env) : env;
       valid_Config.groupings = _.isPlainObject(config.groupings) ? this.getValidRouteMatch(config.groupings) : groupings;
       valid_Config.proxy = {
-        exactMatch: _.isPlainObject({ ...exactMatch, ...others }) ? this.getValidRouteMatch({ ...exactMatch, ...others }) : proxy.exactMatch,
+        exactMatch: _.isPlainObject({ ...exactMatch, ...others })
+          ? this.getValidRouteMatch({ ...exactMatch, ...others })
+          : proxy.exactMatch,
         patternMatch: _.isPlainObject(patternMatch) ? this.getValidRouteMatch(patternMatch) : proxy.patternMatch,
       };
       valid_Config.excludeRoutes = this.getValidMatchedRoutesList(config.excludeRoutes, excludeRoutes);
@@ -53,7 +54,7 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return <Valid_Config>{};
     }
-  };
+  }
 
   /**
    * This function validates and returns the globals object
@@ -63,13 +64,13 @@ export class Validators extends Utils {
    * const globals = fakeResponse.getValidGlobals(globals);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidGlobals = (globals: Globals = this.valid_Globals) => {
+  getValidGlobals(globals: Globals = this.valid_Globals) {
     if (_.isEmpty(globals) || !_.isPlainObject(globals)) {
       return default_Globals;
     }
 
     return { ...default_Globals, ...globals };
-  };
+  }
 
   /**
    * This function validates and returns the injectors object
@@ -79,7 +80,7 @@ export class Validators extends Utils {
    * const injectors = fakeResponse.getValidInjectors(injectors);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidInjectors = (injectors: Injectors[] = []): Valid_Injectors[] => {
+  getValidInjectors(injectors: Injectors[] = []): Valid_Injectors[] {
     if (_.isEmpty(injectors) || !_.isArray(injectors)) {
       return <[]>default_Injectors;
     }
@@ -99,7 +100,7 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return [];
     }
-  };
+  }
 
   /**
    * This function validates and returns the db List
@@ -109,7 +110,7 @@ export class Validators extends Utils {
    * const db = fakeResponse.getValidDb(db,injectors);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidDb = (db: UserDB = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  getValidDb(db: UserDB = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
       console.log(chalk.yellow("  Oops, Db not found. Using default DB"));
       db = default_Db;
@@ -122,7 +123,7 @@ export class Validators extends Utils {
     } else {
       return default_Db;
     }
-  };
+  }
 
   /**
    * This function validates and returns the db List
@@ -132,7 +133,7 @@ export class Validators extends Utils {
    * const db = fakeResponse.getValidDbList(db);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidDbList = (db: Db[] = <Db[]>this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  getValidDbList(db: Db[] = <Db[]>this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] {
     try {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
       if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
@@ -211,7 +212,7 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return [];
     }
-  };
+  }
 
   /**
    * This function helps to transform the db url or object to an db List
@@ -221,7 +222,7 @@ export class Validators extends Utils {
    * const db = fakeResponse.transformJson(db, injectors);
    * @link https://github.com/R35007/Fake-Response#transformjson - For further info pls visit this ReadMe
    */
-  transformJson = (data: object | string = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  transformJson(data: object | string = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] {
     try {
       let valid_data = data;
       console.log(chalk.gray("  Transforming Json..."));
@@ -257,7 +258,7 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return [];
     }
-  };
+  }
 
   /**
    * This function returns all the matched routes list
@@ -267,14 +268,16 @@ export class Validators extends Utils {
    * const db = fakeResponse.getMatchedRoutesList(db, routesMatchList);
    * @link https://github.com/R35007/Fake-Response#getmatchedrouteslist - For further info pls visit this ReadMe
    */
-  getMatchedRoutesList = (db: Db[] | object, routesMatchList: string[] | Valid_RoutesMatchList): string[] => {
+  getMatchedRoutesList(db: Db[] | object, routesMatchList: string[] | Valid_RoutesMatchList): string[] {
     try {
       let userDb = _.isPlainObject(db) ? this.convertJSONToDbList(db) : _.isArray(db) ? db : [];
 
       const routesList = _.flatten(userDb.map((db) => this.getValidRoutes(db.routes)));
 
       if (_.isArray(routesMatchList)) {
-        return this.getValidRoutes(routesMatchList).every((r) => _.isString()) ? routesList.filter((r) => routesMatchList.indexOf(r) >= 0) : [];
+        return this.getValidRoutes(routesMatchList).every((r) => _.isString())
+          ? routesList.filter((r) => routesMatchList.indexOf(r) >= 0)
+          : [];
       } else if (_.isPlainObject(routesMatchList)) {
         let exactMatch = routesMatchList.exactMatch || [];
         let patternMatch = routesMatchList.patternMatch || [];
@@ -293,7 +296,7 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return [];
     }
-  };
+  }
 
   /**
    * This function returns all the json files data to a combined json from the given path
@@ -303,7 +306,7 @@ export class Validators extends Utils {
    * const db = fakeResponse.getMockFromPath(folderOrFilePath, excludeFolders);
    * @link https://github.com/R35007/Fake-Response#getmockfrompath - For further info pls visit this ReadMe
    */
-  getMockFromPath = (directoryPath: string = "./", excludeFolders: string[] = []): object => {
+  getMockFromPath(directoryPath: string = "./", excludeFolders: string[] = []): object {
     try {
       const parsedUrl = this.parseUrl(directoryPath);
       const stats = fs.statSync(parsedUrl);
@@ -326,5 +329,5 @@ export class Validators extends Utils {
       console.error(chalk.red(err.message));
       return {};
     }
-  };
+  }
 }
