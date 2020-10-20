@@ -9,6 +9,7 @@ export interface Db {
   routes: string | string[];
   middlewares?: Middleware | Array<Middleware | undefined>;
   delays?: number | Array<number | undefined>;
+  statusCodes?: number | number[];
   env?: KeyValString;
   isGrouped?: boolean;
 }
@@ -81,6 +82,7 @@ export interface Locals {
   specificMiddleware: Middlewares;
   commonMiddleware: Middlewares;
   delay: number;
+  statusCode: number | undefined;
   fileType: FileType;
   urlType: URLType;
 }
@@ -101,6 +103,7 @@ export interface Injectors {
   middleware?: Middleware;
   delay?: number;
   isGrouped?: boolean;
+  statusCode?: number;
   routes: string | string[] | Valid_RoutesMatchList;
 }
 
@@ -148,6 +151,7 @@ export interface Valid_Db {
   routes: string[];
   middlewares: Array<Middleware | undefined>;
   delays: Array<number | undefined>;
+  statusCodes: Array<number | undefined>;
   env: KeyValString;
   isGrouped: boolean;
 }
@@ -182,6 +186,7 @@ export interface Valid_ConfigDelay {
 export interface Valid_Injectors {
   middleware: Middleware | undefined;
   delay: number | undefined;
-  routes: Valid_RoutesMatchList;
+  statusCode: number | undefined;
   isGrouped: boolean;
+  routes: Valid_RoutesMatchList;
 }

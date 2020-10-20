@@ -16,6 +16,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
     - [URL Data](#url-data)
   - [Specific Delay](#specific-delay)
   - [Specific Middleware](#specific-middleware)
+  - [Specific StatusCode](#specific-statuscode)
   - [Injectors](#injectors)
   - [Globals](#globals)
     - [Share Data between Routes](#share-data-between-routes)
@@ -293,6 +294,25 @@ From the above script the first route `/users` don't execute any method.
 The second route `/data/:id` execute the `override` method which overrides the response as `{id:1,name:"bar"}`.
 The third route `/users/foo` execute the `logTime` method which doesn't override any response but simply logs the time.
 
+### **Specific StatusCode**
+
+Helps to set a status code of the response
+
+```js
+const db = [
+  {
+    data: { id: 1, name: "foo" },
+    routes: ["/users", "/data/:id", "/users/foo"],
+    statusCodes: [, 500, 404],
+  },
+  {
+    data: { id: 1, name: "foo" },
+    routes: ["/parent", "/parent/:id", "/parent/child"],
+    statusCodes: 200, // executes statusCodes for every route of this object
+  },
+];
+```
+
 ### **Injectors**
 
 Injectors helps to inject a specific middleware and delay for the existing routes. For Example :
@@ -317,6 +337,10 @@ const Injectors = [
   {
     delay: 300,
     isGrouped : false
+    routes:["/route2"]
+  },
+  {
+    statusCode: 300, // must be between 100 - 599
     routes:["/route2"]
   }
 ]

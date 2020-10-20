@@ -52,11 +52,12 @@ export class Middlewares extends DefaultMiddlewares {
     dataType: string,
     specificMiddleware: Middleware,
     commonMiddleware: Config["middleware"],
-    delay: number
+    delay: number,
+    statusCode: number | undefined
   ) => {
     return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
-        res.locals = { data, dataType, specificMiddleware, commonMiddleware, delay };
+        res.locals = { data, dataType, specificMiddleware, commonMiddleware, delay, statusCode };
         const canProceed = this.redirectIfMissingParams(req, res);
         if (canProceed) {
           if (dataType == "file") {
@@ -107,8 +108,10 @@ export class Middlewares extends DefaultMiddlewares {
 
   protected defaultMiddleware = (req: express.Request, res: express.Response, next) => {
     try {
-      const { data, dataType, fileType, urlType } = <Locals>res.locals;
+      const { data, dataType, fileType, urlType, statusCode } = <Locals>res.locals;
       if (!res.headersSent) {
+        if (statusCode && statusCode >= 100 && statusCode < 600) res.statusCode = statusCode;
+
         if (dataType === "file") {
           res.sendFile(this.parseUrl(fileType.url));
         } else if (dataType === "url") {

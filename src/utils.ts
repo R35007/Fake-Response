@@ -99,6 +99,15 @@ export class Utils {
     return "default";
   };
 
+  protected getValidStatusCode = (statusCode, len): Array<number | undefined> => {
+    if (_.isNumber(statusCode) && statusCode >= 100 && statusCode < 600) {
+      return _.fill(Array(len), _.toInteger(statusCode));
+    } else if (_.isArray(statusCode)) {
+      return Array.from(statusCode, (sc) => (_.isInteger(sc) && sc >= 100 && sc < 600 ? sc : undefined));
+    }
+    return _.fill(Array(len), undefined);
+  };
+
   protected getValidMiddlewares = (middlewares, len): Array<Middleware | undefined> => {
     if (_.isFunction(middlewares)) {
       return _.fill(Array(len), middlewares);

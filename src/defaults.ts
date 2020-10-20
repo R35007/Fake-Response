@@ -43,6 +43,7 @@ export const default_Db: Valid_Db[] = [
     dataType: "default",
     middlewares: [undefined],
     delays: [undefined],
+    statusCodes: [undefined],
     isGrouped: false,
   },
 ];

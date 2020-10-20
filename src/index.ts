@@ -4,10 +4,23 @@ import cors from "cors";
 import express from "express";
 import { Server } from "http";
 import * as _ from "lodash";
-import { Middlewares } from "./middlewares";
 import * as path from "path";
 import * as url from "url";
-import { Config, Db, Globals, HAR, HarEntry, Injectors, Middleware, RouteResult, Status, UserDB, Valid_Db } from "./model";
+import { Middlewares } from "./middlewares";
+import {
+  Config,
+  Db,
+  Globals,
+  HAR,
+  HarEntry,
+  Injectors,
+  Middleware,
+  RouteResult,
+  Status,
+  UserDB,
+  Valid_ConfigMiddleware,
+  Valid_Db,
+} from "./model";
 import { sample_config, sample_db, sample_globals, sample_injectors } from "./samples";
 
 /**
@@ -276,11 +289,11 @@ export class FakeResponse extends Middlewares {
     }
   };
 
-  private generateRoute = (db, route, _r_index, _s_index): RouteResult => {
-    const { data, dataType, middlewares, delays, _d_index = _s_index, env = {} } = db;
+  private generateRoute = (db: Valid_Db, route: string, _r_index: number, _s_index: number): RouteResult => {
+    const { data, dataType, middlewares, delays, statusCodes, _d_index = _s_index, env = {} } = db;
     try {
       const envData = env[this.valid_Config.env] || data;
-      this.createRoute(envData, route, dataType, middlewares[_r_index], delays[_r_index]);
+      this.createRoute(envData, route, dataType, statusCodes[_r_index], delays[_r_index], middlewares[_r_index]);
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
@@ -302,10 +315,10 @@ export class FakeResponse extends Middlewares {
    * fakeResponse.createRoute('/newRoute',newResponse);
    * @link https://github.com/R35007/Fake-Response#createroute - For further info pls visit this ReadMe
    */
-  createRoute = (data: any, route: string, dataType: string = "default", middleware?: Middleware, delay?: number) => {
+  createRoute = (data: any, route: string, dataType: string = "default", statusCode?: number, delay?: number, middleware?: Middleware) => {
     try {
       if (!this.app) this.createExpressApp();
-      checkRoute(dataType, route, delay, this.availableRoutes); // throws Error if any of the data is invalid.
+      checkRoute(dataType, route, delay, statusCode, this.availableRoutes); // throws Error if any of the data is invalid.
       this.fullDbData[route] = data;
       const delayTime = getDelayTime(route, delay, this.valid_Config.delay, this.commonDelayExcludeRoutes);
       const middlewareList = this.getMiddlewareList(
@@ -314,6 +327,7 @@ export class FakeResponse extends Middlewares {
         middleware,
         this.valid_Config.middleware,
         delayTime,
+        statusCode,
         this.valid_Globals
       );
       this.app.all(route, middlewareList);
@@ -323,10 +337,18 @@ export class FakeResponse extends Middlewares {
     }
   };
 
-  private getMiddlewareList = (data, dataType, middleware, configMiddleware, delayTime, globals) => {
+  private getMiddlewareList = (
+    data: any,
+    dataType: string,
+    middleware: Middleware | undefined,
+    configMiddleware: Valid_ConfigMiddleware,
+    delayTime: number,
+    statusCode: number | undefined,
+    globals: object
+  ) => {
     if (configMiddleware.override) {
       return [
-        this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
+        this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime, statusCode),
         this.commonMiddlewareWrapper(this.commonMiddlewareExcludeRoutes, globals),
         this.specificMiddlewareWrapper(globals),
         this.defaultMiddleware,
@@ -334,7 +356,7 @@ export class FakeResponse extends Middlewares {
     }
 
     return [
-      this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime),
+      this.initialMiddlewareWrapper(data, dataType, middleware, configMiddleware, delayTime, statusCode),
       this.specificMiddlewareWrapper(globals),
       this.commonMiddlewareWrapper(this.commonMiddlewareExcludeRoutes, globals),
       this.defaultMiddleware,
@@ -347,17 +369,25 @@ export class FakeResponse extends Middlewares {
    * This function helps to transform the harJSon to a simple route and response object
    * @example
    * const {FakeResponse} = require("fake-response");
-   * const fakeResponse = new FakeResponse()
-   * const db = fakeResponse.transformHar(harData, ["xhr","document"]);
+   * const fakeResponse = new FakeResponse();
+   * const callback = (entry, route, response) => ({[route] : response});
+   * const db = fakeResponse.transformHar(harData, ["xhr","document"], callback);
    * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
    */
-  transformHar = (harData: HAR = <HAR>{}, resourceTypeFilters: string[] = [], callback?: Function) => {
+  transformHar = (
+    harData: HAR = <HAR>{},
+    resourceTypeFilters: string[] = [],
+    callback?: (entry: object, route: string, response: any) => object
+  ) => {
     try {
       const entries: HarEntry[] = _.get(harData, "log.entries", []);
       const resourceFilteredEntries = resourceTypeFilters.length
         ? entries.filter((e) => resourceTypeFilters.indexOf(e._resourceType) >= 0)
         : entries;
-      const mock = resourceFilteredEntries.reduce((result, entry) => {
+      const mimeTypeFilteredEntries = resourceFilteredEntries.filter(
+        (e) => e?.response?.content?.mimeType === "application/json" || e?.response?.content?.mimeType === "text/plain"
+      );
+      const mock = mimeTypeFilteredEntries.reduce((result, entry) => {
         const route = url.parse(entry.request.url).pathname;
         const valid_Route = this.getValidRoute(route);
         const responseText = _.get(entry, "response.content.text", "");
@@ -372,7 +402,7 @@ export class FakeResponse extends Middlewares {
         let obj = { [valid_Route]: response };
 
         if (_.isFunction(callback)) {
-          obj = callback(entry, valid_Route, response);
+          obj = callback(entry, valid_Route, response) || {};
         }
 
         return {
@@ -494,11 +524,13 @@ const getDelayTime = (route, specificDelay, commonDelay, excludeRoutes) => {
   return typeof specificDelay !== "undefined" && specificDelay >= 0 ? specificDelay : commonDelayTime || 0;
 };
 
-const checkRoute = (dataType, route, delay, availableRoutes) => {
+const checkRoute = (dataType, route, delay, statusCode, availableRoutes) => {
   if (["url", "file", "default"].indexOf(dataType) < 0) throw new Error("Please provide a valid dataType");
   if (!_.isString(route) || !route.startsWith("/") || isDuplicateRoute(route, availableRoutes))
     throw new Error("Please provide a valid route");
   if (typeof delay !== "undefined" && !_.isInteger(delay)) throw new Error("Please provide a valid delay");
+  if (typeof statusCode !== "undefined" && !_.isInteger(statusCode) && !(statusCode >= 100 && statusCode < 600))
+    throw new Error("Please provide a valid statusCode");
 };
 
 const isDuplicateRoute = (route, availableRoutes) => {

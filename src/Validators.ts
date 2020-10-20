@@ -91,6 +91,7 @@ export class Validators extends Utils {
         valid_injector.routes = this.getValidMatchedRoutesList(injector.routes, default_InjectorsRoute);
         valid_injector.middleware = this.getValidMiddlewares(injector.middleware, 1)[0];
         valid_injector.delay = this.getValidDelays(injector.delay, 1)[0];
+        valid_injector.statusCode = this.getValidStatusCode(injector.statusCode, 1)[0];
         valid_injector.isGrouped = injector.isGrouped == true;
         return valid_injector;
       });
@@ -161,7 +162,7 @@ export class Validators extends Utils {
           if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
 
           const valid_obj = <Valid_Db>{};
-          const { data, dataType, routes, isGrouped, middlewares, delays, env } = obj;
+          const { data, dataType, routes, isGrouped, statusCodes: statusCode, middlewares, delays, env } = obj;
 
           valid_obj.routes = this.getValidRoutes(routes).filter((r) => excludeRoutesList.indexOf(r) < 0 && availableRoutes.indexOf(r) < 0);
           valid_obj.routes = [...new Set(valid_obj.routes)];
@@ -174,6 +175,8 @@ export class Validators extends Utils {
             valid_obj.env = !_.isEmpty(env) && _.isObject(env) ? env : {};
             valid_obj.isGrouped = isGrouped == true;
 
+            const specific_statusCodes = this.getValidStatusCode(statusCode, valid_obj.routes.length);
+
             const injector_isGrouped = valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "isGrouped"));
             valid_obj.isGrouped = valid_obj.isGrouped ? valid_obj.isGrouped : injector_isGrouped.filter(Boolean).length > 0;
 
@@ -181,10 +184,12 @@ export class Validators extends Utils {
             const specific_delays = this.getValidDelays(delays, valid_obj.routes.length);
 
             const injector_Middlewares = <Middleware[]>valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "middleware"));
-
             const injector_Delays = <number[]>valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "delay"));
+            const injector_statusCodes = <number[]>valid_obj.routes.map((r) => this.getInjector(r, valid_injector, "statusCode"));
 
             valid_obj.middlewares = specific_middlewares.map((m, i) => (_.isFunction(m) ? m : injector_Middlewares[i]));
+            valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
+            valid_obj.statusCodes = specific_statusCodes.map((sc, i) => (!_.isInteger(sc) ? injector_statusCodes[i] : sc));
 
             if (valid_obj.isGrouped) {
               valid_obj.middlewares = valid_obj.middlewares.map((m) => (_.isFunction(m) ? m : this.groupMiddleware));
@@ -193,8 +198,6 @@ export class Validators extends Utils {
                 {}
               );
             }
-
-            valid_obj.delays = specific_delays.map((d, i) => (!_.isInteger(d) ? injector_Delays[i] : d));
 
             return valid_obj;
           } else {
