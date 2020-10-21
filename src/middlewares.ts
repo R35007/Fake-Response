@@ -110,6 +110,7 @@ export class Middlewares extends DefaultMiddlewares {
     try {
       const { data, dataType, fileType, urlType, statusCode } = <Locals>res.locals;
       if (!res.headersSent) {
+        if(data._statusCode && data._statusCode >= 100 && data._statusCode < 600) res.statusCode = statusCode;
         if (statusCode && statusCode >= 100 && statusCode < 600) res.statusCode = statusCode;
 
         if (dataType === "file") {
