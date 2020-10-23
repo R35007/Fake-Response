@@ -1,12 +1,11 @@
 import chalk from "chalk";
 import * as _ from "lodash";
 import UrlPattern from "url-pattern";
-import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, Valid_RoutesMatchList } from "./model";
+import { Config, DataType, Db, Globals, Injectors, UserDB, Middleware, Valid_RoutesMatchList, FileDetails } from "./model";
 import { Valid_Db, Valid_Config, Valid_Injectors } from "./model";
 import { default_Db, default_Config, default_Injectors, default_Globals, default_InjectorsRoute } from "./defaults";
 import { Utils } from "./utils";
 import * as fs from "fs";
-import * as path from "path";
 
 export class Validators extends Utils {
   constructor() {
@@ -21,7 +20,7 @@ export class Validators extends Utils {
    * const config = fakeResponse.getValidConfig(config);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidConfig = (config: Config = this.valid_Config): Valid_Config => {
+  getValidConfig = (config: Config | Valid_Config = this.valid_Config): Valid_Config => {
     if (_.isEmpty(config) || !_.isPlainObject(config)) {
       console.log(chalk.yellow("  Oops, Config not found. Using default Config"));
       return default_Config;
@@ -47,11 +46,14 @@ export class Validators extends Utils {
       valid_Config.baseUrl = _.isString(config.baseUrl) ? this.getValidRoute(config.baseUrl) : baseUrl;
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
+      valid_Config.throwError = config.throwError == true;
+      this.shouldThrowError = valid_Config.throwError;
 
       return valid_Config;
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return <Valid_Config>{};
     }
   };
@@ -99,6 +101,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return [];
     }
   };
@@ -111,7 +114,7 @@ export class Validators extends Utils {
    * const db = fakeResponse.getValidDb(db,injectors);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidDb = (db: UserDB = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  getValidDb = (db: UserDB | Valid_Db[] = this.valid_DB, injectors: Injectors[] | Valid_Injectors[] = this.valid_Injectors): Valid_Db[] => {
     if (_.isEmpty(db) || (!_.isString(db) && !_.isPlainObject(db) && !_.isArray(db))) {
       console.log(chalk.yellow("  Oops, Db not found. Using default DB"));
       db = default_Db;
@@ -134,7 +137,10 @@ export class Validators extends Utils {
    * const db = fakeResponse.getValidDbList(db);
    * @link https://github.com/R35007/Fake-Response#getdata - For further info pls visit this ReadMe
    */
-  getValidDbList = (db: Db[] = <Db[]>this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  getValidDbList = (
+    db: Db[] | Valid_Db[] = <Db[]>this.valid_DB,
+    injectors: Injectors[] | Valid_Injectors[] = this.valid_Injectors
+  ): Valid_Db[] => {
     try {
       if (!_.isArray(db)) throw TypeError("Invalid db type. db must be an array");
       if (!_.isArray(injectors)) throw TypeError("Invalid injectors type. injectors must be an array");
@@ -213,6 +219,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return [];
     }
   };
@@ -225,7 +232,10 @@ export class Validators extends Utils {
    * const db = fakeResponse.transformJson(db, injectors);
    * @link https://github.com/R35007/Fake-Response#transformjson - For further info pls visit this ReadMe
    */
-  transformJson = (data: object | string = this.valid_DB, injectors: Injectors[] = this.valid_Injectors): Valid_Db[] => {
+  transformJson = (
+    data: object | string = this.valid_DB,
+    injectors: Injectors[] | Valid_Injectors[] = this.valid_Injectors
+  ): Valid_Db[] => {
     try {
       let valid_data = data;
       console.log(chalk.gray("  Transforming Json..."));
@@ -259,6 +269,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return [];
     }
   };
@@ -297,6 +308,7 @@ export class Validators extends Utils {
       return [];
     } catch (err) {
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return [];
     }
   };
@@ -306,31 +318,59 @@ export class Validators extends Utils {
    * @example
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse()
-   * const db = fakeResponse.getMockFromPath(folderOrFilePath, excludeFolders);
+   * const db = fakeResponse.getMockFromPath(folderOrFilePath, excludeFolders, true);
    * @link https://github.com/R35007/Fake-Response#getmockfrompath - For further info pls visit this ReadMe
    */
-  getMockFromPath = (directoryPath: string = "./", excludeFolders: string[] = []): object => {
+  getMockFromPath = (directoryPath: string = "./", excludeFolders: string[] = [], recursive: boolean = true): object => {
     try {
-      const parsedUrl = this.parseUrl(directoryPath);
-      const stats = fs.statSync(parsedUrl);
-      if (stats.isFile() && path.extname(parsedUrl) === ".json") {
-        const obj = JSON.parse(fs.readFileSync(parsedUrl, "utf-8"));
-        return obj;
-      } else if (stats.isDirectory() && excludeFolders.indexOf(parsedUrl) < 0) {
-        const files = fs.readdirSync(parsedUrl);
-        const filteredFiles = files.filter((file) => excludeFolders.indexOf(file) < 0);
+      const filesList = this.getFilesList(directoryPath, excludeFolders, recursive);
+      const onlyJson = filesList.filter((f) => f.extension === ".json");
 
-        const mockJson = filteredFiles.reduce((mock, file) => {
-          const fullPath = parsedUrl + "/" + file;
-          return { ...mock, ...this.getMockFromPath(path.resolve(fullPath), excludeFolders) };
-        }, {});
-        return mockJson;
-      }
-      return {};
+      const mockData = onlyJson.reduce((mock, file) => {
+        const obj = JSON.parse(fs.readFileSync(file.filePath, "utf-8"));
+        return { ...mock, ...obj };
+      }, {});
+      return mockData;
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
       return {};
+    }
+  };
+
+  /**
+   * This function returns all the json files list from the given path
+   * @example
+   * const {FakeResponse} = require("fake-response");
+   * const fakeResponse = new FakeResponse()
+   * const db = fakeResponse.getFilesList(folderOrFilePath, excludeFolders, true);
+   * @link https://github.com/R35007/Fake-Response#getfileslist - For further info pls visit this ReadMe
+   */
+  getFilesList = (directoryPath: string = "./", excludeFolders: string[] = [], recursive: boolean = true): FileDetails[] => {
+    try {
+      const parsedUrl = this.parseUrl(directoryPath);
+      const stats = fs.statSync(parsedUrl);
+      if (stats.isFile()) {
+        return this.getFileDetail(parsedUrl);
+      } else if (stats.isDirectory() && excludeFolders.indexOf(parsedUrl) < 0) {
+        const files = fs.readdirSync(parsedUrl);
+        const filteredFiles = files.filter((file) => excludeFolders.indexOf(file) < 0);
+        const filesList = filteredFiles.reduce((res: FileDetails[], file: string) => {
+          if (recursive) {
+            return res.concat(this.getFilesList(`${parsedUrl}/${file}`, excludeFolders, true));
+          }
+          return res.concat(this.getFileDetail(`${parsedUrl}/${file}`));
+        }, []);
+
+        return filesList;
+      }
+      return [];
+    } catch (err) {
+      this.isValidated = false;
+      console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
+      return [];
     }
   };
 }

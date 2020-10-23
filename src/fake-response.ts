@@ -18,5 +18,5 @@ try {
   const fakeResponse = new FakeResponse(db, config, globals, injectors);
   fakeResponse.launchServer();
 } catch (err) {
-  console.log("\n" + chalk.red(err.message) + "\n");
+  console.error("\n" + chalk.red(err.message) + "\n");
 }

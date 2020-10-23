@@ -18,11 +18,13 @@ import * as path from "path";
 
 export class Utils {
   isValidated = true;
+  shouldThrowError = false;
 
   valid_DB: Valid_Db[];
   valid_Config: Valid_Config;
   valid_Globals: Globals;
   valid_Injectors: Valid_Injectors[];
+
   constructor() {}
   protected getInjector = (route: string, injectors: Valid_Injectors[], type: string): Middleware | number | undefined => {
     const relatedInjector = injectors.find((inject) => {
@@ -321,5 +323,12 @@ export class Utils {
 
   protected isDirectoryExist = (value) => {
     return _.isString(value) && fs.existsSync(this.parseUrl(value)) && fs.statSync(this.parseUrl(value)).isDirectory();
+  };
+
+  protected getFileDetail = (filePath: string) => {
+    const stats = fs.statSync(filePath);
+    const extension = path.extname(filePath);
+    const fileName = path.basename(filePath, extension);
+    return [{ fileName, extension, filePath, isFile: stats.isFile() }];
   };
 }

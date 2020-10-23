@@ -40,6 +40,7 @@ class DefaultMiddlewares extends Validators {
   protected errorHandler = (err, req, res, next) => {
     if (!err) return next();
     console.log(chalk.red("! Error.Something went wrong"));
+    if (this.shouldThrowError) throw new Error(err.message);
   };
 }
 
@@ -110,7 +111,7 @@ export class Middlewares extends DefaultMiddlewares {
     try {
       const { data, dataType, fileType, urlType, statusCode } = <Locals>res.locals;
       if (!res.headersSent) {
-        if(data._statusCode && data._statusCode >= 100 && data._statusCode < 600) res.statusCode = data._statusCode;
+        if (data._statusCode && data._statusCode >= 100 && data._statusCode < 600) res.statusCode = data._statusCode;
         if (statusCode && statusCode >= 100 && statusCode < 600) res.statusCode = statusCode;
 
         if (dataType === "file") {

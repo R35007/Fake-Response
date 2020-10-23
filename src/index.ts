@@ -18,8 +18,10 @@ import {
   RouteResult,
   Status,
   UserDB,
+  Valid_Config,
   Valid_ConfigMiddleware,
   Valid_Db,
+  Valid_Injectors,
 } from "./model";
 import { sample_config, sample_db, sample_globals, sample_injectors } from "./samples";
 
@@ -66,9 +68,9 @@ export class FakeResponse extends Middlewares {
    * @link https://github.com/R35007/Fake-Response#setdata - For further info pls visit this ReadMe
    */
   setData = (
-    db: UserDB = this.valid_DB,
-    config: Config = this.valid_Config,
-    injectors: Injectors[] = this.valid_Injectors,
+    db: UserDB | Valid_Db = this.valid_DB,
+    config: Config | Valid_Config = this.valid_Config,
+    injectors: Injectors[] | Valid_Injectors[] = this.valid_Injectors,
     globals: Globals = this.valid_Globals
   ) => {
     console.log("\n" + chalk.gray("Loading Data..."));
@@ -153,6 +155,7 @@ export class FakeResponse extends Middlewares {
       };
     } catch (err) {
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
     }
   };
 
@@ -275,6 +278,7 @@ export class FakeResponse extends Middlewares {
       return this.routesResults;
     } catch (err) {
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
     }
   };
 
@@ -284,7 +288,9 @@ export class FakeResponse extends Middlewares {
       if (routes.length === 0) throw new Error("routes not found. Please provide any route.");
       return routes.map((route, _r_index) => this.generateRoute(db, route, _r_index, _s_index));
     } catch (err) {
-      console.error(chalk.red(`  http://localhost:${this.valid_Config.port} `) + `- ${err.message} @index : ${_d_index}`);
+      const errMsgRed = `  http://localhost:${this.valid_Config.port} `;
+      const errMsg = `- ${err.message} @index : ${_d_index}`;
+      console.error(chalk.red(errMsgRed) + errMsg);
       return [{ routes, _d_index, _s_index, status: "failure", error: err.message }];
     }
   };
@@ -297,7 +303,9 @@ export class FakeResponse extends Middlewares {
       const status = <Status>"success";
       return { routes: route, _d_index, _s_index, _r_index, status };
     } catch (err) {
-      console.log(chalk.red(`  http://localhost:${this.valid_Config.port}${route} `) + `- ${err.message} @index : ${_d_index}:${_r_index}`);
+      const errMsgRed = `  http://localhost:${this.valid_Config.port}${route} `;
+      const errMsg = `- ${err.message} @index : ${_d_index}:${_r_index}`;
+      console.log(chalk.red(errMsgRed) + errMsg);
       const status = <Status>"failure";
       return { routes: route, _d_index, _s_index, _r_index, status, error: err.message };
     }
@@ -333,7 +341,9 @@ export class FakeResponse extends Middlewares {
       this.app.all(route, middlewareList);
       // console.log("  http://localhost:" + this.valid_Config.port + route);
     } catch (err) {
-      console.error("  http://localhost:" + this.valid_Config.port + route + " : " + chalk.red(err.message));
+      const errMsgRed = err.message;
+      const errMsg = "  http://localhost:" + this.valid_Config.port + route + " : ";
+      console.error(errMsg + chalk.red(errMsgRed));
     }
   };
 
@@ -416,6 +426,7 @@ export class FakeResponse extends Middlewares {
       return valid_Mock;
     } catch (err) {
       console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
     }
   };
 
@@ -444,32 +455,37 @@ export class FakeResponse extends Middlewares {
    * @link https://github.com/R35007/Fake-Response#filterbyschema - For further info pls visit this ReadMe
    */
   filterBySchema = (data: any = {}, schema: object = {}) => {
-    if (_.isPlainObject(data)) {
-      const filteredObj = Object.entries(data).reduce((result, [key, val]) => {
-        const schemaKeys = Object.keys(schema);
-        if (schemaKeys.indexOf(key) >= 0) {
-          if (_.isPlainObject(schema[key])) {
-            if (_.isPlainObject(val)) {
-              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
-            } else if (_.isArray(val)) {
-              return { ...result, [key]: this.filterBySchema(val, schema[key]) };
-            } else {
-              return result;
+    try {
+      if (_.isPlainObject(data)) {
+        const filteredObj = Object.entries(data).reduce((result, [key, val]) => {
+          const schemaKeys = Object.keys(schema);
+          if (schemaKeys.indexOf(key) >= 0) {
+            if (_.isPlainObject(schema[key])) {
+              if (_.isPlainObject(val)) {
+                return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+              } else if (_.isArray(val)) {
+                return { ...result, [key]: this.filterBySchema(val, schema[key]) };
+              } else {
+                return result;
+              }
+            } else if (schema[key] === true) {
+              return { ...result, [key]: val };
             }
-          } else if (schema[key] === true) {
-            return { ...result, [key]: val };
+            return result;
           }
           return result;
-        }
-        return result;
-      }, {});
+        }, {});
 
-      return filteredObj;
-    } else if (_.isArray(data)) {
-      const filteredArray = data.map((j) => this.filterBySchema(j, schema)).filter((fa) => !_.isEmpty(fa));
-      return filteredArray.length ? filteredArray : [];
+        return filteredObj;
+      } else if (_.isArray(data)) {
+        const filteredArray = data.map((j) => this.filterBySchema(j, schema)).filter((fa) => !_.isEmpty(fa));
+        return filteredArray.length ? filteredArray : [];
+      }
+      return data;
+    } catch (err) {
+      console.error(chalk.red(err.message));
+      if (this.shouldThrowError) throw new Error(err.message);
     }
-    return data;
   };
 
   /**

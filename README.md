@@ -51,6 +51,7 @@ Created with <3 for front-end developers who need a quick back-end for prototypi
   - [getMockJSON](#getmockjson)
   - [getMatchedRoutesList](#getmatchedrouteslist)
   - [getMockFromPath](#getmockfrompath)
+  - [getFilesList](#getfileslist)
 - [Author](#author)
 - [License](#license)
 
@@ -1069,15 +1070,32 @@ const routes = fakeResponse.getMatchedRoutesList(data, matchList);
 return all the json files data to a combined json data from the given path
 
 ```js
-const mock = fakeResponse.getMockFromPath(directoryPath, excludeFolders);
+const mock = fakeResponse.getMockFromPath(directoryPath, excludeFolders, true);
 ```
 
 **`Params`**
 
-| Name           | Type   | Required | Default | Description                                                   |
-| -------------- | ------ | -------- | ------- | ------------------------------------------------------------- |
-| directoryPath  | string | NO       | "./"    | Provide the filepath or the directory path                    |
-| excludeFolders | object | No       | []      | list of path or filename to exclude from requiring json files |
+| Name           | Type    | Required | Default | Description                                                   |
+| -------------- | ------- | -------- | ------- | ------------------------------------------------------------- |
+| directoryPath  | string  | NO       | "./"    | Provide the filepath or the directory path                    |
+| excludeFolders | object  | No       | []      | list of path or filename to exclude from requiring json files |
+| recursive      | boolean | No       | true    | If true, it searchs for all nested folder                     |
+
+### **getFilesList**
+
+returns the list of all fileName, extension and its path from the given folder.
+
+```js
+const mock = fakeResponse.getFilesList(directoryPath, excludeFolders, true);
+```
+
+**`Params`**
+
+| Name           | Type    | Required | Default | Description                                                   |
+| -------------- | ------- | -------- | ------- | ------------------------------------------------------------- |
+| directoryPath  | string  | NO       | "./"    | Provide the filepath or the directory path                    |
+| excludeFolders | object  | No       | []      | list of path or filename to exclude from requiring json files |
+| recursive      | boolean | No       | true    | If true, it searchs for all nested folder                     |
 
 ## Author
 

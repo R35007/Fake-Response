@@ -35,6 +35,7 @@ export interface Config {
   excludeRoutes?: string | string[] | RoutesMatchList;
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
+  throwError?: boolean;
 }
 
 export interface RoutesMatchList {
@@ -169,6 +170,7 @@ export interface Valid_Config {
   excludeRoutes: Valid_RoutesMatchList;
   middleware: Valid_ConfigMiddleware;
   delay: Valid_ConfigDelay;
+  throwError: boolean;
 }
 
 export interface Valid_ConfigMiddleware {
@@ -189,4 +191,11 @@ export interface Valid_Injectors {
   statusCode: number | undefined;
   isGrouped: boolean;
   routes: Valid_RoutesMatchList;
+}
+
+export interface FileDetails {
+  fileName: string;
+  extension: string;
+  filePath: string;
+  isFile: boolean;
 }
