@@ -36,6 +36,7 @@ export interface Config {
   middleware?: Middleware | ConfigMiddleware;
   delay?: number | ConfigDelay;
   throwError?: boolean;
+  reverseRouteOrder?: boolean;
 }
 
 export interface RoutesMatchList {
@@ -171,6 +172,7 @@ export interface Valid_Config {
   middleware: Valid_ConfigMiddleware;
   delay: Valid_ConfigDelay;
   throwError: boolean;
+  reverseRouteOrder: boolean;
 }
 
 export interface Valid_ConfigMiddleware {

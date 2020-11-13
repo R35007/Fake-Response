@@ -47,6 +47,7 @@ export class Validators extends Utils {
       valid_Config.middleware = this.getConfigMiddleware(config.middleware, middleware);
       valid_Config.delay = this.getConfigDelay(config.delay, delay);
       valid_Config.throwError = config.throwError == true;
+      valid_Config.reverseRouteOrder = config.reverseRouteOrder == true;
       this.shouldThrowError = valid_Config.throwError;
 
       return valid_Config;
@@ -162,7 +163,7 @@ export class Validators extends Utils {
 
       let availableRoutes = [];
 
-      const valid_db = <Valid_Db[]>userDb
+      let valid_db = <Valid_Db[]>userDb
         .reverse()
         .map((obj, i) => {
           if (!_.isPlainObject(obj)) throw new TypeError(`not an object type. @index : ${i}`);
@@ -211,8 +212,15 @@ export class Validators extends Utils {
           }
         })
         .filter(Boolean)
+
+      if(this.valid_Config.reverseRouteOrder){
+        valid_db = valid_db
+        .map((db, i) => ({ ...db, _d_index: i }));
+      }else{
+        valid_db = valid_db
         .reverse()
         .map((db, i) => ({ ...db, _d_index: i }));
+      } 
 
       const sorted_db = _.sortBy(valid_db, ["dataType"]);
       return sorted_db;

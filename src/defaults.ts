@@ -33,6 +33,7 @@ export const default_Config: Valid_Config = {
     override: false,
   },
   throwError: false,
+  reverseRouteOrder: false,
 };
 
 export const default_Db: Valid_Db[] = [
