@@ -54,7 +54,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return <Valid_Config>{};
     }
   };
@@ -102,7 +102,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return [];
     }
   };
@@ -227,7 +227,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return [];
     }
   };
@@ -277,7 +277,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return [];
     }
   };
@@ -316,7 +316,7 @@ export class Validators extends Utils {
       return [];
     } catch (err) {
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return [];
     }
   };
@@ -342,7 +342,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return {};
     }
   };
@@ -377,7 +377,7 @@ export class Validators extends Utils {
     } catch (err) {
       this.isValidated = false;
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
       return [];
     }
   };

@@ -155,7 +155,7 @@ export class FakeResponse extends Middlewares {
       };
     } catch (err) {
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
     }
   };
 
@@ -278,7 +278,7 @@ export class FakeResponse extends Middlewares {
       return this.routesResults;
     } catch (err) {
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
     }
   };
 
@@ -426,7 +426,7 @@ export class FakeResponse extends Middlewares {
       return valid_Mock;
     } catch (err) {
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
     }
   };
 
@@ -484,7 +484,7 @@ export class FakeResponse extends Middlewares {
       return data;
     } catch (err) {
       console.error(chalk.red(err.message));
-      if (this.shouldThrowError) throw new Error(err.message);
+      if (this.shouldThrowError) throw new Error(err);
     }
   };
 
