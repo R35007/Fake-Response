@@ -75,6 +75,8 @@ export class FakeResponse extends Middlewares {
   ) => {
     console.log("\n" + chalk.gray("Loading Data..."));
 
+    this.isValidated = true;
+    
     this.valid_Config = this.getValidConfig(config);
     this.valid_Globals = this.getValidGlobals(globals);
     this.valid_Injectors = this.getValidInjectors(injectors);
