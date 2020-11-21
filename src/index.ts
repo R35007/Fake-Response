@@ -76,7 +76,7 @@ export class FakeResponse extends Middlewares {
     console.log("\n" + chalk.gray("Loading Data..."));
 
     this.isValidated = true;
-    
+
     this.valid_Config = this.getValidConfig(config);
     this.valid_Globals = this.getValidGlobals(globals);
     this.valid_Injectors = this.getValidInjectors(injectors);
@@ -383,26 +383,16 @@ export class FakeResponse extends Middlewares {
    * const {FakeResponse} = require("fake-response");
    * const fakeResponse = new FakeResponse();
    * const callback = (entry, route, response) => ({[route] : response});
-   * const db = fakeResponse.transformHar(harData, ["xhr","document"], callback);
+   * const db = fakeResponse.transformHar(harData, callback);
    * @link https://github.com/R35007/Fake-Response#transformhar - For further info pls visit this ReadMe
    */
-  transformHar = (
-    harData: HAR = <HAR>{},
-    resourceTypeFilters: string[] = [],
-    callback?: (entry: object, route: string, response: any) => object
-  ) => {
+  transformHar = (harData: HAR = <HAR>{}, callback?: (entry: object, route: string, response: any) => object) => {
     try {
-      const entries: HarEntry[] = _.get(harData, "log.entries", []);
-      const resourceFilteredEntries = resourceTypeFilters.length
-        ? entries.filter((e) => resourceTypeFilters.indexOf(e._resourceType) >= 0)
-        : entries;
-      const mimeTypeFilteredEntries = resourceFilteredEntries.filter(
-        (e) => e?.response?.content?.mimeType === "application/json" || e?.response?.content?.mimeType === "text/plain"
-      );
-      const mock = mimeTypeFilteredEntries.reduce((result, entry) => {
+      const entries: HarEntry[] = harData?.log.entries || [];
+      const mock = entries.reduce((result, entry) => {
         const route = url.parse(entry.request.url).pathname;
         const valid_Route = this.getValidRoute(route);
-        const responseText = _.get(entry, "response.content.text", "");
+        const responseText = entry.response.content.text || "";
 
         let response;
         try {

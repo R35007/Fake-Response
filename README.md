@@ -987,7 +987,7 @@ const { FakeResponse } = require("fake-response");
 const localhostData = require("./localhost.json");
 
 const fakeResponse = new FakeResponse();
-const mock = fakeResponse.transformHar(localhostData, ["document", "xhr"], (entry, route, response) => {
+const mock = fakeResponse.transformHar(localhostData, (entry, route, response) => {
   return { [route]: response };
 });
 fakeResponse.setData(mock);
@@ -999,7 +999,6 @@ fakeResponse.launchServer();
 | Name                | Type     | Required | Default   | Description                                         |
 | ------------------- | -------- | -------- | --------- | --------------------------------------------------- |
 | harData             | object   | No       | {}        | This object generates the local rest api.           |
-| resourceTypeFilters | object   | No       | []        | Provide your response types to be filtered          |
 | callback            | Function | No       | undefined | This method is called on each entry of the har data |
 
 ### **filterBySchema**
