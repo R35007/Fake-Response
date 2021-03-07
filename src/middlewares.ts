@@ -68,7 +68,7 @@ export class Middlewares extends DefaultMiddlewares {
           }
           setTimeout(() => {
             next();
-          }, delay);
+          }, data._delay || delay);
         }
       } catch (err) {
         console.error("\n" + chalk.red(err.message));
@@ -81,7 +81,7 @@ export class Middlewares extends DefaultMiddlewares {
     return (req: express.Request, res: express.Response, next: express.NextFunction) => {
       try {
         const { data, specificMiddleware } = res.locals;
-        const params: MiddlewareParams = { req, res, next, data, globals, locals: res.locals };
+        const params: MiddlewareParams = { req, res, next, data, globals, locals: <Locals>res.locals };
         _.isFunction(specificMiddleware) ? specificMiddleware(params) : next();
       } catch (err) {
         console.error("\n" + chalk.red(err.message));
@@ -111,8 +111,8 @@ export class Middlewares extends DefaultMiddlewares {
     try {
       const { data, dataType, fileType, urlType, statusCode } = <Locals>res.locals;
       if (!res.headersSent) {
-        if (data._statusCode && data._statusCode >= 100 && data._statusCode < 600) res.statusCode = data._statusCode;
         if (statusCode && statusCode >= 100 && statusCode < 600) res.statusCode = statusCode;
+        if (data._statusCode && data._statusCode >= 100 && data._statusCode < 600) res.statusCode = data._statusCode;
 
         if (dataType === "file") {
           res.sendFile(this.parseUrl(fileType.url));

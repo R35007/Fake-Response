@@ -25,7 +25,7 @@ export class Utils {
   valid_Globals: Globals;
   valid_Injectors: Valid_Injectors[];
 
-  constructor() {}
+  constructor() { }
   protected getInjector = (route: string, injectors: Valid_Injectors[], type: string): Middleware | number | undefined => {
     const relatedInjector = injectors.find((inject) => {
       const exactMatch = inject.routes.exactMatch;
@@ -130,8 +130,8 @@ export class Utils {
 
   protected getGroupedDbList = (db: Db[], groupings) => {
     const patternMatchEntries = Object.entries(groupings);
-    const groupedDbList = patternMatchEntries.reduce((result, [key, val]: [string, string]) => {
-      const groupedDb = this.getGroupedDb(db, key, val);
+    const groupedDbList = patternMatchEntries.reduce((result, [key, val]) => {
+      const groupedDb = this.getGroupedDb(db, key, val as string);
       if (!_.isEmpty(groupedDb)) {
         const obj = {
           data: groupedDb,
@@ -153,8 +153,8 @@ export class Utils {
         .filter(Boolean);
 
       if (matchedRoutes.length) {
-        const data = matchedRoutes.reduce((res, r: string) => {
-          return { ...res, [r]: d.data };
+        const data = matchedRoutes.reduce((res, r) => {
+          return { ...res, [r as string]: d.data };
         }, {});
         return { ...groupedRoutes, ...data };
       }
@@ -207,7 +207,7 @@ export class Utils {
   };
 
   private getExactRoutes = (routes: string[], exactMatchEntries: [string, string][]) => {
-    const exactMatchRoutes = routes.reduce((result: string[], r: string) => {
+    const exactMatchRoutes = routes.reduce((result, r) => {
       const exactMatchRoute = exactMatchEntries.reduce((er, [key, val]) => (key === r ? [...er, r, val] : [...er, r]), []);
       return exactMatchRoute.length ? [...result, exactMatchRoute] : [...result, r];
     }, []);

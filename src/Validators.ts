@@ -152,7 +152,7 @@ export class Validators extends Utils {
       const valid_injector = this.getValidInjectors(injectors);
 
       if (!_.isEmpty(this.valid_Config.groupings)) {
-        userDb = [...userDb, ...this.getGroupedDbList(userDb, this.valid_Config.groupings)];
+        userDb = <Db[]>[...userDb, ...this.getGroupedDbList(userDb, this.valid_Config.groupings)];
       }
 
       if (!_.isEmpty(proxy.patternMatch) || !_.isEmpty(proxy.exactMatch)) {
@@ -213,14 +213,14 @@ export class Validators extends Utils {
         })
         .filter(Boolean)
 
-      if(this.valid_Config.reverseRouteOrder){
+      if (this.valid_Config.reverseRouteOrder) {
         valid_db = valid_db
-        .map((db, i) => ({ ...db, _d_index: i }));
-      }else{
+          .map((db, i) => ({ ...db, _d_index: i }));
+      } else {
         valid_db = valid_db
-        .reverse()
-        .map((db, i) => ({ ...db, _d_index: i }));
-      } 
+          .reverse()
+          .map((db, i) => ({ ...db, _d_index: i }));
+      }
 
       const sorted_db = _.sortBy(valid_db, ["dataType"]);
       return sorted_db;
